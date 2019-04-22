@@ -4,8 +4,8 @@ import binascii
 import serial
 import time
 
-import param_manager
-import utility
+from . import param_manager
+from . import utility
 
 #______________________________________________________________________________
 class MoverController():
@@ -22,7 +22,7 @@ class MoverController():
                                   parity=serial.PARITY_NONE,
                                   baudrate=baudrate,
                                   timeout=timeout)
-    except:
+    except serial.serialutil.SerialException:
       self.device = None
     for i in ['x', 'y', 'z']:
       val = param_manager.get(f'device_id_{i}')
@@ -240,7 +240,7 @@ class MoverController():
   def servo_off(self, device_id):
     utility.print_info(f'MVC  ID = {device_id} servo off')
     device_id, cmd_no, data = self.send(device_id, 0x0c)
-    status = int(data, 16)
+    status = 0x0 if data is None or len(data) != 2 else int(data, 16)
     if status == 0x1:
       time.sleep(2)
     else:
@@ -250,7 +250,7 @@ class MoverController():
   def servo_on(self, device_id):
     utility.print_info(f'MVC  ID = {device_id} servo on')
     device_id, cmd_no, data = self.send(device_id, 0x0b)
-    status = int(data, 16)
+    status = 0x0 if data is None or len(data) != 2 else int(data, 16)
     if status == 0x1:
       time.sleep(2)
     else:

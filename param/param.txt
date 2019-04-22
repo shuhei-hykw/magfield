@@ -1,9 +1,10 @@
 # param.txt
 
 data_path	/home/shuhei/work/magfield/data
+sound_file	/home/shuhei/work/magfield/module/under_transition.wav
 
 # Mover
 mover_device	/dev/ttyUSB0
 device_id_x	0
-#device_id_y	1
+device_id_y	1
 device_id_z	2

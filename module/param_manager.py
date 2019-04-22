@@ -3,7 +3,7 @@
 import os
 import sys
 
-import utility
+from . import utility
 
 param_list = dict()
 
@@ -15,7 +15,7 @@ def get(key):
 
 #______________________________________________________________________________
 def initialize(param_file):
-  utility.print_info('PRM  initialize')
+  utility.print_info(f'PRM  read {param_file}')
   global param_list
   with open(param_file, 'r') as f:
     for line in f:
@@ -24,3 +24,4 @@ def initialize(param_file):
         continue
       param_list[columns[0]] = columns[1]
       utility.print_info(f'PRM  key = {columns[0] + ",":16} val = {columns[1]}')
+  utility.print_info(f'PRM  initialized')
