@@ -1,0 +1,9 @@
+# param.txt
+
+data_path	/home/shuhei/work/magfield/data
+
+# Mover
+mover_device	/dev/ttyUSB0
+device_id_x	0
+#device_id_y	1
+device_id_z	2
