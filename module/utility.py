@@ -5,7 +5,8 @@ import sys
 import tkinter
 from tkinter.scrolledtext import ScrolledText
 
-status_log = None
+log_widget = None
+log_file = None
 debug_on = False
 info_on = True
 warning_on = True
@@ -32,22 +33,31 @@ class Utility:
 
 #______________________________________________________________________________
 def add_text(line, fgcolor='black', bgcolor='white'):
-  if status_log is None:
+  if log_widget is None:
     return
   line += '\n'
-  status_log.config(state=tkinter.NORMAL)
-  status_log.insert(tkinter.END, line)
-  end_index = status_log.index(tkinter.END)
+  if log_file is not None:
+    log_file.write(line)
+    log_file.flush()
+  log_widget.config(state=tkinter.NORMAL)
+  log_widget.insert(tkinter.END, line)
+  end_index = log_widget.index(tkinter.END)
   begin_index = f'{end_index}-{len(line) + 1}c'
-  status_log.tag_delete(tag_list[0], begin_index, end_index)
+  log_widget.tag_delete(tag_list[0], begin_index, end_index)
   tag_list.pop(0)
   tag_list.append(str(datetime.datetime.now()))
-  status_log.tag_add(tag_list[-1], begin_index, end_index)
-  status_log.tag_config(tag_list[-1], foreground=fgcolor, background=bgcolor)
+  log_widget.tag_add(tag_list[-1], begin_index, end_index)
+  log_widget.tag_config(tag_list[-1], foreground=fgcolor, background=bgcolor)
   if end_index > f'{max_log_line}.0':
-    status_log.delete(1.0, end_index + f'-{max_log_line + 1}lines')
-  status_log.config(state=tkinter.DISABLED)
-  status_log.see(tkinter.END)
+    log_widget.delete(1.0, end_index + f'-{max_log_line + 1}lines')
+  log_widget.config(state=tkinter.DISABLED)
+  log_widget.see(tkinter.END)
+
+#______________________________________________________________________________
+def close_log_file():
+  global log_file
+  log_file.close()
+  log_file = None
 
 #______________________________________________________________________________
 def print_debug(arg):
@@ -101,6 +111,11 @@ def set_warning(flag=True):
   warning_on = flag
 
 #______________________________________________________________________________
-def set_log(text):
-  global status_log
-  status_log = text
+def set_log_file(log):
+  global log_file
+  log_file = open(log, 'w')
+
+#______________________________________________________________________________
+def set_log_widget(widget):
+  global log_widget
+  log_widget = widget

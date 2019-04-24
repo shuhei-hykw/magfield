@@ -238,10 +238,10 @@ class Controller(tkinter.Frame):
     flog = tkinter.Frame(self)
     flog.pack(side=tkinter.LEFT, padx=10, pady=10)
     font = ('Courier', -12)
-    self.status_log = ScrolledText(flog, font=font, width=90)
-    self.status_log.config(state=tkinter.DISABLED)
-    self.status_log.pack(side=tkinter.TOP, padx=5, fill=tkinter.BOTH)
-    utility.set_log(self.status_log)
+    log_widget = ScrolledText(flog, font=font, width=90)
+    log_widget.config(state=tkinter.DISABLED)
+    log_widget.pack(side=tkinter.TOP, padx=5, fill=tkinter.BOTH)
+    utility.set_log_widget(log_widget)
 
   #____________________________________________________________________________
   def check_button(self):
@@ -273,6 +273,9 @@ class Controller(tkinter.Frame):
     self.manual_inching_e.insert(0, str(inching))
     with open(self.manual_inching_file,'w') as f:
       f.write(str(inching))
+    self.log_dir = os.path.join(self.data_path, 'log')
+    if not os.path.isdir(self.log_dir):
+      os.mkdir(self.log_dir)
 
   #____________________________________________________________________________
   def check_under_transition(self):
@@ -465,13 +468,27 @@ class Controller(tkinter.Frame):
     self.daq_status = 'RUNNING'
     self.bstart.config(state=tkinter.DISABLED)
     self.bstop.config(state=tkinter.NORMAL)
+    name = (str(datetime.datetime.now())[:19]
+            .replace(':', '').replace("-", '').replace(' ', '_'))
+    self.output_name = os.path.join(self.data_path, name + '.txt')
+    utility.print_info(f'DAQ  open file: {self.output_name}')
+    self.output_file = open(self.output_name, 'w')
+    self.output_file.write(f'#\n# {self.output_name}\n#\n# param = ' +
+                           f'{param_manager.get("param_file")}\n# step = ' +
+                           f'{param_manager.get("step_file")}\n# speed = ' +
+                           f'{self.get_speed()}\n#\n' +
+                           f'# date time step x y z\n\n')
+    utility.set_log_file((os.path.join(self.log_dir, name + '.log')))
 
   #____________________________________________________________________________
   def stop(self):
     if self.daq_status == 'RUNNING':
       utility.print_info('DAQ  stop')
+      self.output_file.close()
       self.daq_status = 'IDLE'
       self.set_manual_inching(force=True)
+      utility.print_info(f'DAQ  close file: {self.output_name}')
+      utility.close_log_file()
     self.bstop.config(state=tkinter.DISABLED)
     if self.mover_status == 'MOVING':
       utility.print_info('MVC  stop')
@@ -506,7 +523,7 @@ class Controller(tkinter.Frame):
         else:
           self.bstart.config(state=tkinter.DISABLED)
       elif self.mover_status == 'MOVING':
-        self.mover_label.config(text='MVC: Moving', fg='green', bg='black')
+        self.mover_label.config(text='MVC: MOVING', fg='green', bg='black')
         self.bstart.config(state=tkinter.DISABLED)
       else:
         self.bstart.config(state=tkinter.DISABLED)
@@ -515,8 +532,10 @@ class Controller(tkinter.Frame):
       self.bstart.config(state=tkinter.DISABLED)
     if self.daq_status == 'IDLE':
       self.daq_label.config(text='DAQ: Idle', fg='blue')
+      self.menu1.entryconfig('Quit', state=tkinter.NORMAL)
     elif self.daq_status == 'RUNNING':
       self.daq_label.config(text='DAQ: RUNNING', fg='green')
+      self.menu1.entryconfig('Quit', state=tkinter.DISABLED)
 
 
   #____________________________________________________________________________
@@ -601,7 +620,10 @@ class Controller(tkinter.Frame):
             int(param_manager.get('deviation')) and
             servo_status[key] == 1):
           self.mover_status = 'MOVING'
-        pos_txt += f'{key.upper()} {vmon:9.1f}({vset:9.1f})\n'
+        if vmon != -999999. and vset != -999999.:
+          pos_txt += f'{key.upper()} {vmon:9.1f}({vset:9.1f})\n'
+        else:
+          pos_txt += f'{key.upper()} {"-"*9}({"-"*9})\n'
       else:
         pos_txt += f'{key.upper()} {"-"*9:9}({"-"*9:9})\n'
     self.lmover_position.config(text=pos_txt)
@@ -676,12 +698,25 @@ class Controller(tkinter.Frame):
         status = True
         for key, val in device_list.items():
           if self.mover_enable[key].get():
-            if (abs(self.mover_position_set[key] - self.last_step[key]) <=
-                int(param_manager.get('deviation'))):
-              self.step_status = 'IDLE'
-            elif self.mover_status == 'IDLE':
-              self.mover.go_to(val, int(self.last_step[key]))
-        print('stepping')
+            if (abs(self.mover_position_set[key] - self.last_step[key]) >=
+                float(param_manager.get('deviation'))*1e-3):
+              status = False
+              if self.mover_status == 'IDLE':
+                utility.print_debug(f'STP   ID = {val} ' +
+                                    'step might be failed -> RE-ADJUST')
+                self.mover.go_to(val, int(self.last_step[key]))
+        if status:
+          now = str(datetime.datetime.now())[:19]
+          time.sleep(2)
+          self.step_status = 'IDLE'
+          buf = f'{now} {self.get_step():>6} '
+          # for key, val in device_list.items():
+          #   buf += f'{self.last_step[key]:9.1f} '
+          for key, val in device_list.items():
+            buf += f'{self.mover_position_mon[key]:9.1f} '
+          utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
+          self.output_file.write(buf + '\n')
+          self.output_file.flush()
     else:
       self.step_e.config(state=tkinter.NORMAL)
 

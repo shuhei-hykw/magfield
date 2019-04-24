@@ -10,5 +10,5 @@ mover_device	/dev/ttyUSB0
 device_id_x	0
 device_id_y	1
 device_id_z	2
-step_file	/home/shuhei/work/magfield/param/step.txt
-deviation	10	allowable position deviation [um]
+step_file	/home/shuhei/work/magfield/param/test_step.txt
+deviation	5	allowable position deviation [um]

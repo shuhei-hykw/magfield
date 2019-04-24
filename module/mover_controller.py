@@ -16,9 +16,13 @@ class MoverController():
   DEVIATION_LIST = {'x': None, 'y': None, 'z': None}
 
   #____________________________________________________________________________
-  def __init__(self, device_name, baudrate=115200, timeout=0.5):
+  def __init__(self, device_name, baudrate=115200, timeout=1.0):
     self.device_name = device_name
     try:
+      utility.print_info(f'MVC  open serial device {device_name}')
+      utility.print_info(f'MVC  - parity = {serial.PARITY_NONE}')
+      utility.print_info(f'MVC  - baudrate = {baudrate}')
+      utility.print_info(f'MVC  - timeout = {timeout}')
       self.device = serial.Serial(device_name,
                                   parity=serial.PARITY_NONE,
                                   baudrate=baudrate,
@@ -160,7 +164,7 @@ class MoverController():
     if vmon == -999999. or vset == -999999:
       return False
     dist = val - vset
-    self.set_manual_inching(device_id, int(dist*1000))
+    self.set_manual_inching(device_id, int(dist*1000), False)
     if dist > 0:
       self.inching_up(device_id)
     else:
@@ -175,7 +179,7 @@ class MoverController():
     if status == 0x1:
       return status
     else:
-      utility.print_error(f'MVC  ID = {device_id} failed to process inching down')
+      utility.print_warning(f'MVC  ID = {device_id} failed to process inching down')
       return status
 
   #____________________________________________________________________________
@@ -186,7 +190,7 @@ class MoverController():
     if status == 0x1:
       return status
     else:
-      utility.print_error(f'MVC  ID = {device_id} failed to process inching up')
+      utility.print_warning(f'MVC  ID = {device_id} failed to process inching up')
       return status
 
   #____________________________________________________________________________
@@ -242,7 +246,7 @@ class MoverController():
     if no == 0x1:
       time.sleep(0.2)
     else:
-      utility.print_error(f'MVC  ID = {device_id} failed to reset alarm')
+      utility.print_warning(f'MVC  ID = {device_id} failed to reset alarm')
 
   #____________________________________________________________________________
   def send(self, device_id, cmd_no, data=None):
@@ -255,8 +259,8 @@ class MoverController():
             f'DATA: {data.hex() if data is not None else data}')
     utility.print_debug(f"MVC  ID = {device_id} W -->  " + vout)
     self.device.write(send)
-    # self.device.flush()
-    time.sleep(0.005)
+    self.device.flush()
+    time.sleep(0.01)
     ret = self.device.readline()
     time.sleep(0.005)
     if len(ret) <= 4:
@@ -320,8 +324,9 @@ class MoverController():
     return True
 
   #____________________________________________________________________________
-  def set_manual_inching(self, device_id, inching):
-    utility.print_info(f'MVC  ID = {device_id} set manual inching: {inching/1000} [mm]')
+  def set_manual_inching(self, device_id, inching, verbose=True):
+    if verbose:
+      utility.print_info(f'MVC  ID = {device_id} set manual inching: {inching/1000} [mm]')
     distance = abs(inching) # [um]
     self.set_parameter(device_id, 0x1f, distance)
 
@@ -331,8 +336,8 @@ class MoverController():
     device_id, cmd_no, data = self.send(device_id, 0x25, data)
     status = int(data, 16) if data is not None and len(data) != 0 else 0x100
     if status != 0x1:
-      utility.print_error(f'MVC  ID = {device_id} failed to set parameter' +
-                          f'#{param_no}, val = {val}')
+      utility.print_warning(f'MVC  ID = {device_id} failed to set parameter' +
+                            f'#{param_no}, val = {val}')
 
   #____________________________________________________________________________
   def set_speed(self, device_id, speed):
@@ -347,7 +352,7 @@ class MoverController():
     if status == 0x1:
       return status
     else:
-      utility.print_error(f'MVC  ID = {device_id} failed to stop moving')
+      utility.print_warning(f'MVC  ID = {device_id} failed to stop moving')
       return status
 
   #____________________________________________________________________________
@@ -373,7 +378,7 @@ class MoverController():
     device_id, cmd_no, data = self.send(device_id, 0x16)
     status = 0x100 if data is None or len(data) != 2 else int(data, 16)
     if status != 0x0 and status != 0x1 and status != 0x100:
-      utility.print_error(f'MVC  ID = {device_id} ' +
-                          f'unknown zero return status = {status}')
+      utility.print_warning(f'MVC  ID = {device_id} ' +
+                            f'unknown zero return status = {status}')
       self.device.readline()
     return status

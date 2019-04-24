@@ -17,6 +17,7 @@ def get(key):
 def initialize(param_file):
   utility.print_info(f'PRM  read {param_file}')
   global param_list
+  param_list['param_file'] = param_file
   with open(param_file, 'r') as f:
     for line in f:
       columns = line.split()
