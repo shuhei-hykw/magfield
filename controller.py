@@ -557,7 +557,7 @@ class Controller(tkinter.Frame):
         self.set_manual[key] = self.mover.set_manual(val)
         if not self.set_manual[key]:
           self.mover_status = 'ERROR'
-          utility.print_warning(f'MVC  failed to update (set manual)')
+          # utility.print_warning(f'MVC  failed to update (set manual)')
           return
         self.mover.device_info(val)
         self.mover.version(val)

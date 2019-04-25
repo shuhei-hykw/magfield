@@ -16,7 +16,7 @@ class MoverController():
   DEVIATION_LIST = {'x': None, 'y': None, 'z': None}
 
   #____________________________________________________________________________
-  def __init__(self, device_name, baudrate=115200, timeout=1.0):
+  def __init__(self, device_name, baudrate=115200, timeout=0.5):
     self.device_name = device_name
     try:
       utility.print_info(f'MVC  open serial device {device_name}')
@@ -179,7 +179,7 @@ class MoverController():
 
   #____________________________________________________________________________
   def io_status(self, device_id):
-    rdevice_id, cmd_no, data = self.send(device_id, 0x19)
+    rdevice_id, rcmd_no, data = self.send(device_id, 0x19)
     if data is None or len(data) != 8:
       utility.print_error(f'MVC  ID = {device_id} failed to read I/O status')
       return None
@@ -236,7 +236,15 @@ class MoverController():
     utility.print_debug(f"MVC  ID = {device_id} W -->  " + vout)
     self.device.write(send)
     ret = self.device.read_until(terminator=self.__class__.END_MAGIC)
+    if len(ret) == 0:
+      utility.print_warning(f'MVC  ID = {device_id} device timeout')
+      return None, None, None
     rdevice_id, rcmd_no, rdata = self.__decode(ret)
+    if rdevice_id != device_id or rcmd_no != cmd_no:
+      utility.print_error(f'MVC  ID = {device_id} return invalid data  ' +
+                          f'ID: {rdevice_id:2x}' +
+                          f'  CMD: {rcmd_no:2x}' +
+                          f'  DATA: {rdata.decode()}')
     utility.print_debug(f'MVC  ID = {device_id} R <--  ' +
                         f'ID: {rdevice_id:2x}' +
                         f'  CMD: {rcmd_no:2x}' +
