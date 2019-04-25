@@ -419,6 +419,8 @@ class Controller(tkinter.Frame):
         val = 1
         self.speed_e.delete(0, tkinter.END)
         self.speed_e.insert(0, str(val))
+      if val == 0:
+        val = 1
       if force or val != self.get_speed():
         self.set_speed(val)
     else:
@@ -586,6 +588,7 @@ class Controller(tkinter.Frame):
       if alarm_status[key] == 0:
         self.lalarm_status[key].config(text='Alarm OFF', fg='blue')
       else:
+        self.mover_status = 'ERROR'
         self.lalarm_status[key].config(text=f'Alarm #{alarm_status[key]}', fg='red')
     if alarm_status_all == 0:
       self.menu1.entryconfig('Alarm reset', state=tkinter.DISABLED)
@@ -596,16 +599,16 @@ class Controller(tkinter.Frame):
     #   return
     servo_status = dict()
     servo_status_all = 0
-    # zero_return_status = dict()
-    # zero_return_status_all = 0
+    zero_return_status = dict()
+    zero_return_status_all = 0
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
         self.lservo_status[key].config(text='Servo N/A', fg='gray40')
         continue
       servo_status[key] = self.mover.servo_status(val)
       servo_status_all += servo_status[key]
-      # zero_return_status = self.mover.zero_return_status(val)
-      # zero_return_status_all += zero_return_status
+      zero_return_status = self.mover.zero_return_status(val)
+      zero_return_status_all += zero_return_status
       if servo_status[key] == 1:
         self.lservo_status[key].config(text=f'Servo ON', fg='green')
       elif servo_status[key] == 0:
@@ -630,7 +633,7 @@ class Controller(tkinter.Frame):
     if count == servo_status_all:
       self.bservo_on.config(state=tkinter.DISABLED)
       # if count == zero_return_status_all and count > 0:
-      if self.mover_status == 'MOVING':
+      if self.mover_status == 'MOVING' or count != zero_return_status_all:
         self.menu1.entryconfig('Zero return', state=tkinter.DISABLED)
         self.bservo_off.config(state=tkinter.DISABLED)
       else:
@@ -648,7 +651,7 @@ class Controller(tkinter.Frame):
       self.menu1.entryconfig('Zero return', state=tkinter.DISABLED)
     self.set_speed()
     self.set_manual_inching()
-    if (alarm_status_all == 0 and #count == zero_return_status_all and
+    if (alarm_status_all == 0 and count == zero_return_status_all and
         self.mover_status != 'ERROR'):
       self.mover_good = True
       if (count == servo_status_all and count > 0 and
@@ -702,19 +705,19 @@ class Controller(tkinter.Frame):
                 float(param_manager.get('deviation'))*1e-3):
               status = False
               if self.mover_status == 'IDLE':
-                utility.print_debug(f'STP   ID = {val} ' +
-                                    'step might be failed -> RE-ADJUST')
+                utility.print_warning(f'STP   ID = {val} ' +
+                                      'step might be failed -> RE-ADJUST')
                 self.mover.go_to(val, int(self.last_step[key]))
         if status:
           now = str(datetime.datetime.now())[:19]
-          time.sleep(2)
+          # time.sleep(2)
           self.step_status = 'IDLE'
           buf = f'{now} {self.get_step():>6} '
           # for key, val in device_list.items():
           #   buf += f'{self.last_step[key]:9.1f} '
           for key, val in device_list.items():
             buf += f'{self.mover_position_mon[key]:9.1f} '
-          utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
+          # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
           self.output_file.write(buf + '\n')
           self.output_file.flush()
     else:
