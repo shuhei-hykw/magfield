@@ -42,7 +42,7 @@ class Controller(tkinter.Frame):
     if self.mover.device is None:
       utility.print_error(f'MVC  failed to open: {self.mover.device_name}')
     self.master.title(f'Field Mapping Controller (pid={os.getpid()})')
-    self.master.resizable(0, 0)
+    self.master.resizable(0, 1)
     self.pack(fill=tkinter.Y, expand=True)
     self.check_files()
     self.check_button()
@@ -236,11 +236,11 @@ class Controller(tkinter.Frame):
     self.lnmr = tkinter.Label(fstatus, text='--------- [T]', font=font)
     self.lnmr.pack(side=tkinter.TOP, padx=5)
     flog = tkinter.Frame(self)
-    flog.pack(side=tkinter.LEFT, padx=10, pady=10)
+    flog.pack(side=tkinter.LEFT, padx=10, pady=10, expand=True, fill=tkinter.BOTH)
     font = ('Courier', -12)
     log_widget = ScrolledText(flog, font=font, width=90)
     log_widget.config(state=tkinter.DISABLED)
-    log_widget.pack(side=tkinter.TOP, padx=5, fill=tkinter.BOTH)
+    log_widget.pack(side=tkinter.TOP, padx=5, expand=True, fill=tkinter.BOTH)
     utility.set_log_widget(log_widget)
 
   #____________________________________________________________________________

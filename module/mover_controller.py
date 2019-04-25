@@ -117,7 +117,7 @@ class MoverController():
     no = int(data[:4], 16).to_bytes(2, 'little')
     no = int.from_bytes(no, 'big')
     val = int(data[4:], 16).to_bytes(4, 'little')
-    val = int.from_bytes(val, 'big')
+    val = int.from_bytes(val, 'big', signed=True)
     if param_no != no:
       utility.print_debug(f'MVC  ID = {device_id} ' +
                           f'invalid param#{no} returned: {val} ' +
@@ -198,20 +198,20 @@ class MoverController():
 
   #____________________________________________________________________________
   def print_parameter(self, device_id):
-    # utility.print_info(f'MVC  ID = {device_id} #01 area max = ' +
-    #                    f'{self.get_parameter(device_id, 1)*1e-4} [mm]')
-    # utility.print_info(f'MVC  ID = {device_id} #02 area min = ' +
-    #                    f'{self.get_parameter(device_id, 2)*1e-4} [mm]')
-    # utility.print_info(f'MVC  ID = {device_id} #03 soft max = ' +
-    #                    f'{self.get_parameter(device_id, 3)*1e-4} [mm]')
-    # utility.print_info(f'MVC  ID = {device_id} #04 soft min = ' +
-    #                    f'{self.get_parameter(device_id, 4)*1e-4} [mm]')
-    # utility.print_info(f'MVC  ID = {device_id} #06 zero offset = ' +
-    #                    f'{self.get_parameter(device_id, 6)*1e-4} [mm]')
     for key, val in self.__class__.DEVICE_LIST.items():
       if val == device_id:
         utility.print_info(f'MVC  ID = {device_id} param#-- deviation limit for' +
                            f' status = {self.__class__.DEVIATION_LIST[key]} [um]')
+    utility.print_info(f'MVC  ID = {device_id} param#01 area max = ' +
+                       f'{self.get_parameter(device_id, 1)*1e-4} [mm]')
+    utility.print_info(f'MVC  ID = {device_id} param#02 area min = ' +
+                       f'{self.get_parameter(device_id, 2)*1e-4} [mm]')
+    utility.print_info(f'MVC  ID = {device_id} param#03 soft max = ' +
+                       f'{self.get_parameter(device_id, 3)*1e-4} [mm]')
+    utility.print_info(f'MVC  ID = {device_id} param#04 soft min = ' +
+                       f'{self.get_parameter(device_id, 4)*1e-4} [mm]')
+    utility.print_info(f'MVC  ID = {device_id} param#06 zero offset = ' +
+                       f'{self.get_parameter(device_id, 6)*1e-4} [mm]')
     utility.print_info(f'MVC  ID = {device_id} param#16 speed = ' +
                        f'{self.get_speed(device_id)} [mm]')
     utility.print_info(f'MVC  ID = {device_id} param#30 deviation limit for'
@@ -295,9 +295,8 @@ class MoverController():
     rdevice_id, cmd_no, data = self.send(device_id, 0x25, data)
     status = int(data, 16) if data is not None and len(data) != 0 else 0x100
     if status != 0x1:
-      utility.print_warning(f'MVC  ID = {device_id} failed to set parameter' +
-                            f'#{param_no}, val = {val}')
-      #self.set_parameter(device_id, param_no, val)
+      utility.print_error(f'MVC  ID = {device_id} failed to set parameter' +
+                          f'#{param_no}, val = {val}')
 
   #____________________________________________________________________________
   def set_speed(self, device_id, speed):
