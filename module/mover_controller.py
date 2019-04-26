@@ -92,7 +92,8 @@ class MoverController():
   def alarm_status(self, device_id):
     rdevice_id, cmd_no, data = self.send(device_id, 0x5b)
     if data is None or len(data) != 2:
-      utility.print_warning(f'MVC  ID = {device_id} failed to read alarm status')
+      utility.print_warning(f'MVC  ID = {device_id} ' +
+                            'failed to read alarm status')
       return 0x100
     no = int(data, 16)
     no = 0x0 if no == 0xff else no
@@ -110,8 +111,8 @@ class MoverController():
 
   #____________________________________________________________________________
   def get_parameter(self, device_id, param_no):
-    rdevice_id, cmd_no, data = self.send(device_id, 0x24,
-                                         str(param_no.to_bytes(2, 'little').hex()))
+    buf = str(param_no.to_bytes(2, 'little').hex())
+    rdevice_id, cmd_no, data = self.send(device_id, 0x24, buf)
     if data is None or len(data) != 12:
       return 0
     no = int(data[:4], 16).to_bytes(2, 'little')
@@ -163,7 +164,8 @@ class MoverController():
     if status == 0x1:
       return status
     else:
-      utility.print_warning(f'MVC  ID = {device_id} failed to process inching down')
+      utility.print_warning(f'MVC  ID = {device_id} ' +
+                            'failed to process inching down')
       return status
 
   #____________________________________________________________________________
@@ -174,7 +176,8 @@ class MoverController():
     if status == 0x1:
       return status
     else:
-      utility.print_warning(f'MVC  ID = {device_id} failed to process inching up')
+      utility.print_warning(f'MVC  ID = {device_id} ' +
+                            'failed to process inching up')
       return status
 
   #____________________________________________________________________________
@@ -187,8 +190,8 @@ class MoverController():
     in_status = int.from_bytes(in_status, 'big')
     out_status = int(data[4:], 16).to_bytes(2, 'little')
     out_status = int.from_bytes(out_status, 'big')
-    utility.print_debug(f'MVC  ID = {rdevice_id} io status: {int(data, 16):08x}'
-                        f'... {in_status:04x} {out_status:04x}')
+    utility.print_debug(f'MVC  ID = {rdevice_id} io status: '
+                        f'{in_status:04x} {out_status:04x}')
     move = (out_status >> 6) & 0x1
     svrdy = (out_status >> 13) & 0x1
     alm = (out_status >> 15) & 0x1
@@ -200,8 +203,9 @@ class MoverController():
   def print_parameter(self, device_id):
     for key, val in self.__class__.DEVICE_LIST.items():
       if val == device_id:
-        utility.print_info(f'MVC  ID = {device_id} param#-- deviation limit for' +
-                           f' status = {self.__class__.DEVIATION_LIST[key]} [um]')
+        utility.print_info(f'MVC  ID = {device_id} param#-- deviation limit ' +
+                           f'for status = ' +
+                           f'{self.__class__.DEVIATION_LIST[key]} [um]')
     utility.print_info(f'MVC  ID = {device_id} param#01 area max = ' +
                        f'{self.get_parameter(device_id, 1)*1e-4} [mm]')
     utility.print_info(f'MVC  ID = {device_id} param#02 area min = ' +
@@ -278,7 +282,8 @@ class MoverController():
     if status == 0x0 or status == 0x1:
       return status
     else:
-      utility.print_error(f'MVC  ID = {device_id} unknown servo status = {status}')
+      utility.print_error(f'MVC  ID = {device_id} unknown servo ' +
+                          f'status = {status}')
       return status
 
   #____________________________________________________________________________
@@ -293,7 +298,8 @@ class MoverController():
   #____________________________________________________________________________
   def set_manual_inching(self, device_id, inching, verbose=True):
     if verbose:
-      utility.print_info(f'MVC  ID = {device_id} set manual inching: {inching/1000} [mm]')
+      utility.print_info(f'MVC  ID = {device_id} set manual inching: ' +
+                         f'{inching/1000} [mm]')
     distance = abs(inching) # [um]
     self.set_parameter(device_id, 0x1f, distance)
 

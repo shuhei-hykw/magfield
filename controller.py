@@ -201,8 +201,10 @@ class Controller(tkinter.Frame):
     self.menu3.add_command(label='Force Alarm reset', command=self.reset_alarm)
     self.menu3.add_command(label='Force Servo ON', command=self.servo_on)
     self.menu3.add_command(label='Force Servo OFF', command=self.servo_off)
-    self.menu3.add_command(label='Force Inching Up', command=self.manual_inching_up)
-    self.menu3.add_command(label='Force Inching Down', command=self.manual_inching_down)
+    self.menu3.add_command(label='Force Inching Up',
+                           command=self.manual_inching_up)
+    self.menu3.add_command(label='Force Inching Down',
+                           command=self.manual_inching_down)
     self.menu3.add_command(label='Force Stop', command=self.stop)
 
   #____________________________________________________________________________
@@ -236,7 +238,8 @@ class Controller(tkinter.Frame):
     self.lnmr = tkinter.Label(fstatus, text='--------- [T]', font=font)
     self.lnmr.pack(side=tkinter.TOP, padx=5)
     flog = tkinter.Frame(self)
-    flog.pack(side=tkinter.LEFT, padx=10, pady=10, expand=True, fill=tkinter.BOTH)
+    flog.pack(side=tkinter.LEFT, padx=10, pady=10,
+              expand=True, fill=tkinter.BOTH)
     font = ('Courier', -12)
     log_widget = ScrolledText(flog, font=font, width=90)
     log_widget.config(state=tkinter.DISABLED)
@@ -246,7 +249,8 @@ class Controller(tkinter.Frame):
   #____________________________________________________________________________
   def check_button(self):
     for key in mover_controller.MoverController.DEVICE_LIST:
-      self.mover_enable[key].set(param_manager.get(f'device_id_{key}') is not None)
+      self.mover_enable[key].set(param_manager.get(f'device_id_{key}')
+                                 is not None)
       if not self.mover_enable[key].get():
         self.mover_check[key].config(state=tkinter.DISABLED)
       self.set_manual[key] = False
@@ -530,7 +534,8 @@ class Controller(tkinter.Frame):
       else:
         self.bstart.config(state=tkinter.DISABLED)
     else:
-      self.mover_label.config(text='MVC: under Transition', fg='yellow', bg='red')
+      self.mover_label.config(text='MVC: under Transition',
+                              fg='yellow', bg='red')
       self.bstart.config(state=tkinter.DISABLED)
     if self.daq_status == 'IDLE':
       self.daq_label.config(text='DAQ: Idle', fg='blue')
@@ -589,7 +594,8 @@ class Controller(tkinter.Frame):
         self.lalarm_status[key].config(text='Alarm OFF', fg='blue')
       else:
         self.mover_status = 'ERROR'
-        self.lalarm_status[key].config(text=f'Alarm #{alarm_status[key]}', fg='red')
+        self.lalarm_status[key].config(text=f'Alarm #{alarm_status[key]}',
+                                       fg='red')
     if alarm_status_all == 0:
       self.menu1.entryconfig('Alarm reset', state=tkinter.DISABLED)
     else:
