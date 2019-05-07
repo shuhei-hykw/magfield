@@ -35,6 +35,8 @@ class Controller(tkinter.Frame):
     param_manager.initialize(param_file)
     step_manager.initialize(param_manager.get('step_file'))
     self.data_path = param_manager.get('data_path')
+    if not os.path.isdir(self.data_path):
+      os.mkdir(self.data_path)
     self.mover = mover_controller.MoverController(param_manager
                                                   .get('mover_device'))
     self.mover_position_mon = {'x': 0., 'y': 0., 'z': 0.}
@@ -167,6 +169,7 @@ class Controller(tkinter.Frame):
     menubar.add_cascade(label='Control', menu=self.menu1)
     self.menu1.add_command(label='Print parameter',
                            command=self.print_parameter)
+    self.menu1.entryconfig('Print parameter', state=tkinter.DISABLED)
     self.menu1.add_separator()
     self.menu1.add_command(label='Zero return', command=self.zero_return)
     self.menu1.entryconfig('Zero return', state=tkinter.DISABLED)
@@ -288,7 +291,10 @@ class Controller(tkinter.Frame):
       now = time.time()
       if now - self.last_under_transition > 4:
         self.last_under_transition = now
-        proc = subprocess.Popen(['aplay', '-q', self.sound_file])
+        try:
+          subprocess.Popen(['aplay', '-q', self.sound_file])
+        except FileNotFoundError:
+          pass
 
   #____________________________________________________________________________
   def get_manual_inching(self):
@@ -554,6 +560,7 @@ class Controller(tkinter.Frame):
       utility.print_warning(f'MVC  failed to update (device is None)')
       return
     count = 0
+    self.menu1.entryconfig('Print parameter', state=tkinter.ENABLED)
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
         continue

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import time
 
 from . import mover_controller
@@ -18,21 +19,24 @@ def get(key):
 #______________________________________________________________________________
 def initialize(step_file):
   utility.print_info(f'STP  read {step_file}')
-  global step_list
-  with open(step_file, 'r') as f:
-    i = 0
-    for line in f:
-      columns = line.split()
-      if len(columns) < 3 or '#' in columns[0]:
-        continue
-      # cmd_pos = [int]
-      step_list.append({'x': int(columns[0]),
-                        'y': int(columns[1]),
-                        'z': int(columns[2])})
-      utility.print_debug(f'STP  step#{i} {step_list[-1]}')
-      i += 1
-    utility.print_info(f'STP  read {i} steps')
-  utility.print_info(f'STP  initialized')
+  if os.path.isfile(step_file):
+    global step_list
+    with open(step_file, 'r') as f:
+      i = 0
+      for line in f:
+        columns = line.split()
+        if len(columns) < 3 or '#' in columns[0]:
+          continue
+        # cmd_pos = [int]
+        step_list.append({'x': int(columns[0]),
+                          'y': int(columns[1]),
+                          'z': int(columns[2])})
+        utility.print_debug(f'STP  step#{i} {step_list[-1]}')
+        i += 1
+      utility.print_info(f'STP  read {i} steps')
+      utility.print_info(f'STP  initialized')
+  else:
+    utility.print_error(f'STP  NOT initialized')
 
 #______________________________________________________________________________
 def set_step(step):
