@@ -2,6 +2,7 @@
 
 import binascii
 import serial
+import threading
 import time
 
 from . import param_manager
@@ -16,14 +17,14 @@ class MoverController():
   DEVIATION_LIST = {'x': None, 'y': None, 'z': None}
 
   #____________________________________________________________________________
-  def __init__(self, device_name, baudrate=115200, timeout=0.5):
-    self.device_name = device_name
+  def __init__(self, baudrate=115200, timeout=0.5):
+    self.device_name = param_manager.get('mover_device')
     try:
-      utility.print_info(f'MVC  open serial device {device_name}')
+      utility.print_info(f'MVC  open serial device {self.device_name}')
       utility.print_info(f'MVC  - parity = {serial.PARITY_NONE}')
       utility.print_info(f'MVC  - baudrate = {baudrate}')
       utility.print_info(f'MVC  - timeout = {timeout}')
-      self.device = serial.Serial(device_name,
+      self.device = serial.Serial(self.device_name,
                                   parity=serial.PARITY_NONE,
                                   baudrate=baudrate,
                                   timeout=timeout)
@@ -33,8 +34,14 @@ class MoverController():
       val = param_manager.get(f'device_id_{i}')
       if val is not None:
         self.__class__.DEVICE_LIST[i] = int(val)
-      val = param_manager.get('deviation')
+      val = param_manager.get('position_dev')
       self.__class__.DEVIATION_LIST[i] = int(val)
+    self.mover_position_mon = dict()
+    self.mover_position_set = dict()
+    self.thread_state = 'RUNNING'
+    self.thread = threading.Thread(target=self.run_thread)
+    self.thread.setDaemon(True)
+    self.thread.start()
 
   #____________________________________________________________________________
   def __del__(self):
@@ -233,6 +240,12 @@ class MoverController():
       utility.print_warning(f'MVC  ID = {device_id} failed to reset alarm')
 
   #____________________________________________________________________________
+  def run_thread(self):
+    while self.thread_state == 'RUNNING':
+      self.update()
+      time.sleep(0.5)
+
+  #____________________________________________________________________________
   def send(self, device_id, cmd_no, data=None):
     send = self.__get_bytes(device_id, cmd_no, data)
     vout = (f'ID: {device_id:2x}  CMD: {cmd_no:2x}  ' +
@@ -327,6 +340,10 @@ class MoverController():
     else:
       utility.print_warning(f'MVC  ID = {device_id} failed to stop moving')
       return status
+
+  #____________________________________________________________________________
+  def update(self):
+    pass
 
   #____________________________________________________________________________
   def version(self, device_id):

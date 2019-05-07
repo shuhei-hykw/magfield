@@ -11,6 +11,7 @@ import time
 import tkinter
 from tkinter.scrolledtext import ScrolledText
 
+from module import hall_probe
 from module import mover_controller
 from module import param_manager
 from module import step_manager
@@ -18,7 +19,7 @@ from module import utility
 
 #______________________________________________________________________________
 class Controller(tkinter.Frame):
-  SOUND_FILE = '/home/shuhei/work/magfield/module/under_transition.wav'
+  SOUND_FILE = 'module/under_transition.wav'
 
   #____________________________________________________________________________
   def __init__(self, param_file):
@@ -26,7 +27,7 @@ class Controller(tkinter.Frame):
     self.mover_status = 'IDLE'
     self.daq_status = 'IDLE'
     self.step_status = 'IDLE'
-    self.field_status = 'IDLE'
+    self.hpc_status = 'IDLE'
     tkinter.Frame.__init__(self)
     self.__make_menu()
     self.__make_label()
@@ -37,12 +38,13 @@ class Controller(tkinter.Frame):
     self.data_path = param_manager.get('data_path')
     if not os.path.isdir(self.data_path):
       os.mkdir(self.data_path)
-    self.mover = mover_controller.MoverController(param_manager
-                                                  .get('mover_device'))
+    self.mover = mover_controller.MoverController()
+    self.zero_return_status = dict()
     self.mover_position_mon = {'x': 0., 'y': 0., 'z': 0.}
     self.mover_position_set = {'x': 0., 'y': 0., 'z': 0.}
     if self.mover.device is None:
       utility.print_error(f'MVC  failed to open: {self.mover.device_name}')
+    self.hallprobe = hall_probe.HallProbeController()
     self.master.title(f'Field Mapping Controller (pid={os.getpid()})')
     self.master.resizable(0, 1)
     self.pack(fill=tkinter.Y, expand=True)
@@ -58,10 +60,10 @@ class Controller(tkinter.Frame):
     font = ('Helvetica', -24, 'bold')
     self.bstart = tkinter.Button(fbuttons, text='Start', font=font,
                                  command=self.start)
-    self.bstart.config(state=tkinter.DISABLED)
+    self.config_disabled(self.bstart)
     self.bstop = tkinter.Button(fbuttons, text='Stop', font=font,
                                 command=self.stop)
-    self.bstop.config(state=tkinter.DISABLED)
+    self.config_disabled(self.bstop)
     self.bstart.pack(side=tkinter.LEFT, padx=5)
     self.bstop.pack(side=tkinter.LEFT, padx=5)
     fstep = tkinter.Frame(fbuttons)
@@ -80,10 +82,10 @@ class Controller(tkinter.Frame):
     lservo_title.pack(side=tkinter.TOP, padx=5, expand=True)
     self.bservo_on = tkinter.Button(fservo, text='Servo ON', font=font,
                                     command=self.servo_on)
-    self.bservo_on.config(state=tkinter.DISABLED)
+    self.config_disabled(self.bservo_on)
     self.bservo_off = tkinter.Button(fservo, text='Servo OFF', font=font,
                                      command=self.servo_off)
-    self.bservo_off.config(state=tkinter.DISABLED)
+    self.config_disabled(self.bservo_off)
     self.bservo_on.pack(side=tkinter.TOP, padx=5)
     self.bservo_off.pack(side=tkinter.TOP, padx=5)
     self.mover_enable = dict()
@@ -127,10 +129,10 @@ class Controller(tkinter.Frame):
     lmanual = tkinter.Label(finching, text='Manual Inching')
     self.binching_up = tkinter.Button(finching, text='Inching Up', font=font,
                                       command=self.manual_inching_up)
-    self.binching_up.config(state=tkinter.DISABLED)
+    self.config_disabled(self.binching_up)
     self.binching_dw = tkinter.Button(finching, text='Inching Dw', font=font,
                                       command=self.manual_inching_down)
-    self.binching_dw.config(state=tkinter.DISABLED)
+    self.config_disabled(self.binching_dw)
     lmanual.pack(side=tkinter.TOP, padx=5)
     self.binching_up.pack(side=tkinter.TOP, padx=5, pady=2)
     self.binching_dw.pack(side=tkinter.TOP, padx=5, pady=2)
@@ -150,10 +152,10 @@ class Controller(tkinter.Frame):
                                      relief=tkinter.RAISED,
                                      bg='black', fg='blue', font=font)
     self.mover_label.pack(side=tkinter.LEFT, expand=True, fill=tkinter.BOTH)
-    self.field_label = tkinter.Label(fstate, text='FLD: Idle', width=20,
-                                     relief=tkinter.RAISED,
-                                     bg='black', fg='blue', font=font)
-    self.field_label.pack(side=tkinter.LEFT, expand=True, fill=tkinter.BOTH)
+    self.hpc_label = tkinter.Label(fstate, text='HPC: Idle', width=20,
+                                   relief=tkinter.RAISED,
+                                   bg='black', fg='blue', font=font)
+    self.hpc_label.pack(side=tkinter.LEFT, expand=True, fill=tkinter.BOTH)
     flabels = tkinter.Frame(self)
     flabels.pack(side=tkinter.TOP, fill=tkinter.X, padx=100)
     self.lasttime = tkinter.Label(flabels, text='Last Update:')
@@ -169,12 +171,12 @@ class Controller(tkinter.Frame):
     menubar.add_cascade(label='Control', menu=self.menu1)
     self.menu1.add_command(label='Print parameter',
                            command=self.print_parameter)
-    self.menu1.entryconfig('Print parameter', state=tkinter.DISABLED)
+    self.config_disabled(self.menu1, 'Print parameter')
     self.menu1.add_separator()
     self.menu1.add_command(label='Zero return', command=self.zero_return)
-    self.menu1.entryconfig('Zero return', state=tkinter.DISABLED)
+    self.config_disabled(self.menu1, 'Zero return')
     self.menu1.add_command(label='Alarm reset', command=self.reset_alarm)
-    self.menu1.entryconfig('Alarm reset', state=tkinter.DISABLED)
+    self.config_disabled(self.menu1, 'Alarm reset')
     self.menu1.add_separator()
     self.menu1.add_command(label='Quit', command=self.master.quit)
     self.menu2 = tkinter.Menu(menubar, tearoff=0)
@@ -219,21 +221,20 @@ class Controller(tkinter.Frame):
                                           font=font)
     lmover_position_title.pack(side=tkinter.TOP, padx=5, pady=5)
     font = ('Courier', -14, 'bold')
-    pos_txt = f'  {"-"*9:9}({"-"*9:9})\n'
+    pos_txt = f'   {"current":8}  {"command":8}\n'
     for key in mover_controller.MoverController.DEVICE_LIST:
       pos_txt += f'{key.upper()} {"-"*9:9}({"-"*9:9})\n'
     self.lmover_position = tkinter.Label(fstatus, text=pos_txt, font=font)
     self.lmover_position.pack(side=tkinter.TOP, padx=5)
     font = ('Helvetica', -16, 'bold')
-    lfield_title = tkinter.Label(fstatus, text='Magnetic Field', font=font)
+    lfield_title = tkinter.Label(fstatus, text='Hall Probe', font=font)
     lfield_title.pack(side=tkinter.TOP, padx=5, pady=5)
     font = ('Courier', -14, 'bold')
     mag_txt = ''
-    for key in mover_controller.MoverController.DEVICE_LIST:
-      mag_txt += f'B{key} {"-"*9:9} [T]\n'
-    mag_txt += f'B  {"-"*9:9} [T]\n'
+    for key in hall_probe.HallProbeController.CHANNEL_LIST:
+      mag_txt += f'B{key} {"-"*10:10} [T]\n'
     self.lfield = tkinter.Label(fstatus, text=mag_txt, font=font)
-    self.lfield.pack(side=tkinter.TOP, padx=5)
+    self.lfield.pack(side=tkinter.TOP)
     font = ('Helvetica', -16, 'bold')
     self.lnmr_title = tkinter.Label(fstatus, text='NMR', font=font)
     self.lnmr_title.pack(side=tkinter.TOP, padx=5, pady=5)
@@ -241,12 +242,12 @@ class Controller(tkinter.Frame):
     self.lnmr = tkinter.Label(fstatus, text='--------- [T]', font=font)
     self.lnmr.pack(side=tkinter.TOP, padx=5)
     flog = tkinter.Frame(self)
-    flog.pack(side=tkinter.LEFT, padx=10, pady=10,
+    flog.pack(side=tkinter.LEFT, padx=5, pady=5,
               expand=True, fill=tkinter.BOTH)
     font = ('Courier', -12)
     log_widget = ScrolledText(flog, font=font, width=90)
-    log_widget.config(state=tkinter.DISABLED)
-    log_widget.pack(side=tkinter.TOP, padx=5, expand=True, fill=tkinter.BOTH)
+    self.config_disabled(log_widget)
+    log_widget.pack(side=tkinter.TOP, expand=True, fill=tkinter.BOTH)
     utility.set_log_widget(log_widget)
 
   #____________________________________________________________________________
@@ -255,7 +256,7 @@ class Controller(tkinter.Frame):
       self.mover_enable[key].set(param_manager.get(f'device_id_{key}')
                                  is not None)
       if not self.mover_enable[key].get():
-        self.mover_check[key].config(state=tkinter.DISABLED)
+        self.config_disabled(self.mover_check[key])
       self.set_manual[key] = False
 
   #____________________________________________________________________________
@@ -286,8 +287,10 @@ class Controller(tkinter.Frame):
 
   #____________________________________________________________________________
   def check_under_transition(self):
-    if (not self.mover_good and self.mover_status == 'ERROR' and
-        self.sound_file is not None):
+    if self.sound_file is None:
+      return
+    if ((not self.mover_good and self.mover_status == 'ERROR') or
+        self.hpc_status == 'ERROR'):
       now = time.time()
       if now - self.last_under_transition > 4:
         self.last_under_transition = now
@@ -295,6 +298,24 @@ class Controller(tkinter.Frame):
           subprocess.Popen(['aplay', '-q', self.sound_file])
         except FileNotFoundError:
           pass
+
+  #____________________________________________________________________________
+  def config_disabled(self, widget, label=None):
+    if label is None:
+      if widget.cget('state') != 'disabled':
+        widget.config(state=tkinter.DISABLED)
+    else:
+      if widget.entrycget(label, 'state') != 'disabled':
+        widget.entryconfig(label, state=tkinter.DISABLED)
+
+  #____________________________________________________________________________
+  def config_normal(self, widget, label=None):
+    if label is None:
+      if widget.cget('state') != 'normal':
+        widget.config(state=tkinter.NORMAL)
+    else:
+      if widget.entrycget(label, 'state') != 'normal':
+        widget.entryconfig(label, state=tkinter.NORMAL)
 
   #____________________________________________________________________________
   def get_manual_inching(self):
@@ -317,10 +338,10 @@ class Controller(tkinter.Frame):
   #____________________________________________________________________________
   def manual_inching_down(self):
     ''' get manual inching down '''
-    self.binching_up.config(state=tkinter.DISABLED)
-    self.binching_dw.config(state=tkinter.DISABLED)
-    self.bservo_on.config(state=tkinter.DISABLED)
-    self.bservo_off.config(state=tkinter.DISABLED)
+    self.config_disabled(self.binching_up)
+    self.config_disabled(self.binching_dw)
+    self.config_disabled(self.bservo_on)
+    self.config_disabled(self.bservo_off)
     utility.print_info('MVC  manual inching down from (' +
                        f'{self.mover_position_set["x"]:9.1f},' +
                        f'{self.mover_position_set["y"]:9.1f},' +
@@ -334,10 +355,10 @@ class Controller(tkinter.Frame):
   #____________________________________________________________________________
   def manual_inching_up(self):
     ''' get manual inching up '''
-    self.binching_up.config(state=tkinter.DISABLED)
-    self.binching_dw.config(state=tkinter.DISABLED)
-    self.bservo_on.config(state=tkinter.DISABLED)
-    self.bservo_off.config(state=tkinter.DISABLED)
+    self.config_disabled(self.binching_up)
+    self.config_disabled(self.binching_dw)
+    self.config_disabled(self.bservo_on)
+    self.config_disabled(self.bservo_off)
     utility.print_info('MVC  manual inching up  from (' +
                        f'{self.mover_position_set["x"]:9.1f},' +
                        f'{self.mover_position_set["y"]:9.1f},' +
@@ -360,8 +381,7 @@ class Controller(tkinter.Frame):
   def reconnect_mover_driver(self):
     ''' reconnect mover driver '''
     utility.print_info(f'MVC  reconnect mover driver')
-    self.mover = mover_controller.MoverController(param_manager
-                                                  .get('mover_device'))
+    self.mover = mover_controller.MoverController()
     if self.mover.device is None:
       utility.print_error(f'MVC  failed to open: {self.mover.device_name}')
     self.mover_good = False
@@ -380,7 +400,7 @@ class Controller(tkinter.Frame):
   #____________________________________________________________________________
   def servo_off(self):
     ''' send servo off command '''
-    self.bservo_off.config(state=tkinter.DISABLED)
+    self.config_disabled(self.bservo_off)
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if self.mover_enable[key].get():
         self.mover.servo_off(val)
@@ -388,7 +408,7 @@ class Controller(tkinter.Frame):
   #____________________________________________________________________________
   def servo_on(self):
     ''' send servo on command '''
-    self.bservo_on.config(state=tkinter.DISABLED)
+    self.config_disabled(self.bservo_on)
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if self.mover_enable[key].get():
         self.mover.servo_on(val)
@@ -478,8 +498,8 @@ class Controller(tkinter.Frame):
   def start(self):
     utility.print_info('DAQ  start')
     self.daq_status = 'RUNNING'
-    self.bstart.config(state=tkinter.DISABLED)
-    self.bstop.config(state=tkinter.NORMAL)
+    self.config_disabled(self.bstart)
+    self.config_normal(self.bstop)
     name = (str(datetime.datetime.now())[:19]
             .replace(':', '').replace("-", '').replace(' ', '_'))
     self.output_name = os.path.join(self.data_path, name + '.txt')
@@ -489,7 +509,7 @@ class Controller(tkinter.Frame):
                            f'{param_manager.get("param_file")}\n# step = ' +
                            f'{param_manager.get("step_file")}\n# speed = ' +
                            f'{self.get_speed()}\n#\n' +
-                           f'# date time step x y z\n\n')
+                           f'# date time step x y z Bx By Bz\n\n')
     utility.set_log_file((os.path.join(self.log_dir, name + '.log')))
 
   #____________________________________________________________________________
@@ -501,7 +521,7 @@ class Controller(tkinter.Frame):
       self.set_manual_inching(force=True)
       utility.print_info(f'DAQ  close file: {self.output_name}')
       utility.close_log_file()
-    self.bstop.config(state=tkinter.DISABLED)
+    self.config_disabled(self.bstop)
     if self.mover_status == 'MOVING':
       utility.print_info('MVC  stop')
       for key, val in mover_controller.MoverController.DEVICE_LIST.items():
@@ -516,10 +536,11 @@ class Controller(tkinter.Frame):
     utility.set_warning(self.print_warning.get() == 1)
     utility.set_error(self.print_error.get() == 1)
     self.update_mover()
+    self.update_hallprobe()
     self.update_label()
     self.check_under_transition()
     self.update_step()
-    self.after(1000, self.updater)
+    self.after(200, self.updater)
 
   #____________________________________________________________________________
   def update_label(self):
@@ -530,26 +551,52 @@ class Controller(tkinter.Frame):
     if self.mover_good:
       if self.mover_status == 'IDLE':
         self.mover_label.config(text='MVC: Idle', fg='blue', bg='black')
-        if self.daq_status == 'IDLE' and self.field_status == 'IDLE':
-          self.bstart.config(state=tkinter.NORMAL)
+        if self.daq_status == 'IDLE' and self.hpc_status == 'RUNNING':
+          self.config_normal(self.bstart)
         else:
-          self.bstart.config(state=tkinter.DISABLED)
+          self.config_disabled(self.bstart)
       elif self.mover_status == 'MOVING':
         self.mover_label.config(text='MVC: MOVING', fg='green', bg='black')
-        self.bstart.config(state=tkinter.DISABLED)
+        self.config_disabled(self.bstart)
       else:
-        self.bstart.config(state=tkinter.DISABLED)
+        self.config_disabled(self.bstart)
     else:
-      self.mover_label.config(text='MVC: under Transition',
+      self.mover_label.config(text='MVC: ERROR',
                               fg='yellow', bg='red')
-      self.bstart.config(state=tkinter.DISABLED)
+      self.config_disabled(self.bstart)
     if self.daq_status == 'IDLE':
       self.daq_label.config(text='DAQ: Idle', fg='blue')
-      self.menu1.entryconfig('Quit', state=tkinter.NORMAL)
+      self.config_normal(self.menu1, 'Quit')
     elif self.daq_status == 'RUNNING':
       self.daq_label.config(text='DAQ: RUNNING', fg='green')
-      self.menu1.entryconfig('Quit', state=tkinter.DISABLED)
+      self.config_disabled(self.menu1, 'Quit')
+    if self.hpc_status == 'IDLE':
+      self.hpc_label.config(text='HPC: Idle', fg='blue', bg='black')
+    elif self.hpc_status == 'RUNNING':
+      self.hpc_label.config(text='HPC: RUNNING', fg='green', bg='black')
+    elif self.hpc_status == 'DEVIATE':
+      self.hpc_label.config(text='HPC: DEVIATE', fg='yellow', bg='black')
+    elif self.hpc_status == 'ERROR':
+      self.hpc_label.config(text='HPC: ERROR', fg='yellow', bg='red')
 
+
+  #____________________________________________________________________________
+  def update_hallprobe(self):
+    if (not self.hallprobe.socket.is_open or
+        self.hallprobe.thread_state != 'RUNNING'):
+      self.hpc_status = 'ERROR'
+      return
+    mag_txt = ''
+    for key in hall_probe.HallProbeController.CHANNEL_LIST:
+      val = self.hallprobe.field[key][0]
+      unit = self.hallprobe.field[key][1]
+      dev = self.hallprobe.field_dev[key]
+      mag_txt += f'B{key} {val:10.5f} [{unit}] ({dev*100:4.1f}%)\n'
+    self.lfield.config(text=mag_txt)
+    if self.hallprobe.dev_status:
+      self.hpc_status = 'RUNNING'
+    else:
+      self.hpc_status = 'DEVIATE'
 
   #____________________________________________________________________________
   def update_mover(self):
@@ -560,7 +607,7 @@ class Controller(tkinter.Frame):
       utility.print_warning(f'MVC  failed to update (device is None)')
       return
     count = 0
-    self.menu1.entryconfig('Print parameter', state=tkinter.NORMAL)
+    self.config_normal(self.menu1, 'Print parameter')
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
         continue
@@ -593,7 +640,7 @@ class Controller(tkinter.Frame):
     alarm_status_all = 0
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
-        self.lalarm_status[key].config(text='Alarm N/A', fg='gray40')
+        self.lalarm_status[key].config(text='Alarm N/A', fg='gray25')
         continue
       alarm_status[key] = self.mover.alarm_status(val)
       alarm_status_all += alarm_status[key]
@@ -604,106 +651,109 @@ class Controller(tkinter.Frame):
         self.lalarm_status[key].config(text=f'Alarm #{alarm_status[key]}',
                                        fg='red')
     if alarm_status_all == 0:
-      self.menu1.entryconfig('Alarm reset', state=tkinter.DISABLED)
+      self.config_disabled(self.menu1, 'Alarm reset')
     else:
-      self.menu1.entryconfig('Alarm reset', state=tkinter.NORMAL)
+      self.config_normal(self.menu1, 'Alarm reset')
     # if count == 0:
     #   self.mover_good = True
     #   return
     servo_status = dict()
     servo_status_all = 0
-    zero_return_status = dict()
     zero_return_status_all = 0
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
-        self.lservo_status[key].config(text='Servo N/A', fg='gray40')
+        self.lservo_status[key].config(text='Servo N/A', fg='gray25')
         continue
       servo_status[key] = self.mover.servo_status(val)
       servo_status_all += servo_status[key]
-      zero_return_status = self.mover.zero_return_status(val)
-      zero_return_status_all += zero_return_status
+      self.zero_return_status[key] = self.mover.zero_return_status(val)
+      zero_return_status_all += self.zero_return_status[key]
       if servo_status[key] == 1:
         self.lservo_status[key].config(text=f'Servo ON', fg='green')
       elif servo_status[key] == 0:
         self.lservo_status[key].config(text=f'Servo OFF', fg='blue')
     pos_txt = f'   {"current":8}  {"command":8}\n'
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
+      zero = ' ' if self.zero_return_status[key] == 1 else '*'
       if self.mover_enable[key].get():
         vmon, vset = self.mover.get_position(val)
         self.mover_position_mon[key] = vmon
         self.mover_position_set[key] = vset
         if (abs(vmon - vset) >
-            int(param_manager.get('deviation')) and
+            int(param_manager.get('position_dev')) and
             servo_status[key] == 1):
           self.mover_status = 'MOVING'
         if vmon != -999999. and vset != -999999.:
-          pos_txt += f'{key.upper()} {vmon:9.1f}({vset:9.1f})\n'
+          pos_txt += f'{zero}{key.upper()} {vmon:9.1f}({vset:9.1f})\n'
         else:
-          pos_txt += f'{key.upper()} {"-"*9}({"-"*9})\n'
+          pos_txt += f'{zero}{key.upper()} {"-"*9}({"-"*9})\n'
       else:
-        pos_txt += f'{key.upper()} {"-"*9:9}({"-"*9:9})\n'
+        pos_txt += f'{zero}{key.upper()} {"-"*9:9}({"-"*9:9})\n'
     self.lmover_position.config(text=pos_txt)
     if count == servo_status_all:
-      self.bservo_on.config(state=tkinter.DISABLED)
+      self.config_disabled(self.bservo_on)
       # if count == zero_return_status_all and count > 0:
-      if self.mover_status == 'MOVING' or count != zero_return_status_all:
-        self.menu1.entryconfig('Zero return', state=tkinter.DISABLED)
-        self.bservo_off.config(state=tkinter.DISABLED)
+      if self.mover_status == 'MOVING':# or count != zero_return_status_all:
+        self.config_disabled(self.menu1, 'Zero return')
+        self.config_disabled(self.bservo_off)
       else:
-        self.menu1.entryconfig('Zero return', state=tkinter.NORMAL)
-        self.bservo_off.config(state=tkinter.NORMAL)
+        self.config_normal(self.menu1, 'Zero return')
+        self.config_normal(self.bservo_off)
     else:
       if alarm_status_all == 0:
-        self.bservo_on.config(state=tkinter.NORMAL)
+        self.config_normal(self.bservo_on)
       else:
-        self.bservo_on.config(state=tkinter.DISABLED)
+        self.config_disabled(self.bservo_on)
       if servo_status_all == 0:
-        self.bservo_off.config(state=tkinter.DISABLED)
+        self.config_disabled(self.bservo_off)
       else:
-        self.bservo_off.config(state=tkinter.NORMAL)
-      self.menu1.entryconfig('Zero return', state=tkinter.DISABLED)
+        self.config_normal(self.bservo_off)
+      self.config_disabled(self.menu1, 'Zero return')
     self.set_speed()
     self.set_manual_inching()
-    if (alarm_status_all == 0 and count == zero_return_status_all and
+    if (alarm_status_all == 0 and #count == zero_return_status_all and
         self.mover_status != 'ERROR'):
       self.mover_good = True
       if (count == servo_status_all and count > 0 and
           self.mover_status != 'MOVING' and
           self.daq_status == 'IDLE'):
-        self.binching_up.config(state=tkinter.NORMAL)
-        self.binching_dw.config(state=tkinter.NORMAL)
+        self.config_normal(self.binching_up)
+        self.config_normal(self.binching_dw)
       else:
-        self.binching_up.config(state=tkinter.DISABLED)
-        self.binching_dw.config(state=tkinter.DISABLED)
+        self.config_disabled(self.binching_up)
+        self.config_disabled(self.binching_dw)
     else:
-      self.binching_up.config(state=tkinter.DISABLED)
-      self.binching_dw.config(state=tkinter.DISABLED)
+      self.config_disabled(self.binching_up)
+      self.config_disabled(self.binching_dw)
     if self.mover_status == 'MOVING' or self.daq_status == 'RUNNING':
-      self.bservo_on.config(state=tkinter.DISABLED)
-      self.bservo_off.config(state=tkinter.DISABLED)
-      self.menu1.entryconfig('Zero return', state=tkinter.DISABLED)
-      self.bstop.config(state=tkinter.NORMAL)
-      self.speed_e.config(state=tkinter.DISABLED)
-      self.manual_inching_e.config(state=tkinter.DISABLED)
+      self.config_disabled(self.bservo_on)
+      self.config_disabled(self.bservo_off)
+      self.config_disabled(self.menu1, 'Zero return')
+      self.config_normal(self.bstop)
+      self.config_disabled(self.speed_e)
+      self.config_disabled(self.manual_inching_e)
     else:
-      self.bstop.config(state=tkinter.DISABLED)
-      self.speed_e.config(state=tkinter.NORMAL)
-      self.manual_inching_e.config(state=tkinter.NORMAL)
+      self.config_disabled(self.bstop)
+      self.config_normal(self.speed_e)
+      self.config_normal(self.manual_inching_e)
 
   #____________________________________________________________________________
   def update_step(self):
+    if self.mover_status == 'ERROR':
+      self.stop()
+      return
     self.set_step()
     step_manager.step_number = self.get_step()
     device_list = mover_controller.MoverController.DEVICE_LIST
     if self.daq_status == 'RUNNING':
       if self.mover_status == 'IDLE' and self.step_status == 'IDLE':
-        self.step_e.config(state=tkinter.DISABLED)
+        self.config_disabled(self.step_e)
         self.last_step = step_manager.step()
         if self.last_step is not None:
-          self.step_e.config(state=tkinter.NORMAL)
+          self.config_normal(self.step_e)
           self.step_e.delete(0, tkinter.END)
           self.step_e.insert(0, str(step_manager.step_number))
-          self.step_e.config(state=tkinter.DISABLED)
+          self.config_disabled(self.step_e)
           for key, val in device_list.items():
             if self.mover_enable[key].get():
               self.mover.go_to(val, int(self.last_step[key]))
@@ -715,7 +765,7 @@ class Controller(tkinter.Frame):
         for key, val in device_list.items():
           if self.mover_enable[key].get():
             if (abs(self.mover_position_set[key] - self.last_step[key]) >=
-                float(param_manager.get('deviation'))*1e-3):
+                float(param_manager.get('position_dev'))*1e-3):
               status = False
               if self.mover_status == 'IDLE':
                 utility.print_warning(f'STP   ID = {val} ' +
@@ -730,11 +780,13 @@ class Controller(tkinter.Frame):
           #   buf += f'{self.last_step[key]:9.1f} '
           for key, val in device_list.items():
             buf += f'{self.mover_position_mon[key]:9.1f} '
+          for key, val in hall_probe.HallProbeController.CHANNEL_LIST:
+            buf += f'{self.hallprobe.field[key]:10.5f} '
           # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
           self.output_file.write(buf + '\n')
           self.output_file.flush()
     else:
-      self.step_e.config(state=tkinter.NORMAL)
+      self.config_normal(self.step_e)
 
   #____________________________________________________________________________
   def zero_return(self):
