@@ -519,7 +519,7 @@ class Controller(tkinter.Frame):
     self.update_label()
     self.check_under_transition()
     self.update_step()
-    self.after(500, self.updater)
+    self.after(1000, self.updater)
 
   #____________________________________________________________________________
   def update_label(self):
@@ -560,7 +560,7 @@ class Controller(tkinter.Frame):
       utility.print_warning(f'MVC  failed to update (device is None)')
       return
     count = 0
-    self.menu1.entryconfig('Print parameter', state=tkinter.ENABLED)
+    self.menu1.entryconfig('Print parameter', state=tkinter.NORMAL)
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
         continue

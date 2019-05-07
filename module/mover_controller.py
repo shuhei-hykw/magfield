@@ -29,7 +29,7 @@ class MoverController():
                                   timeout=timeout)
     except serial.serialutil.SerialException:
       self.device = None
-    for i in ['x', 'y', 'z']:
+    for i in self.__class__.DEVICE_LIST.keys():
       val = param_manager.get(f'device_id_{i}')
       if val is not None:
         self.__class__.DEVICE_LIST[i] = int(val)
