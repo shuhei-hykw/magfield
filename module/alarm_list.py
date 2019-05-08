@@ -93,7 +93,7 @@ class AlarmListWindow(tkinter.Toplevel):
     self.tree = tkinter.ttk.Treeview(self.frame, height=len(alarm_list))
     self.tree['columns'] = (1, 2, 3)
     self.tree['show'] = 'headings'
-    self.tree.column(1, width=50, anchor=tkinter.E)
+    self.tree.column(1, width=50, anchor=tkinter.CENTER)
     self.tree.column(2, width=300)
     self.tree.column(3, width=450)
     self.tree.heading(1, text='Code')
