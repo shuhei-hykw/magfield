@@ -83,13 +83,6 @@ class AlarmListWindow(tkinter.Toplevel):
   def __make_layout(self):
     self.frame = tkinter.Frame(self)
     self.frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
-    # self.text = tkinter.Text(self.frame, font=('Courier', -12, 'bold'),
-    #                          height=20, width=100)
-    # text = f'{"Code":6} {"Name":30} {"Content":10}\n'
-    # text += f'{"1":6} {"Over voltage of motor power":30} {"Content":10}\n'
-    # self.text.insert(tkinter.END, text)
-    # self.text.config(state=tkinter.DISABLED)
-    # self.text.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
     self.tree = tkinter.ttk.Treeview(self.frame, height=len(alarm_list))
     self.tree['columns'] = (1, 2, 3)
     self.tree['show'] = 'headings'
@@ -109,7 +102,6 @@ class AlarmListWindow(tkinter.Toplevel):
 
   #____________________________________________________________________________
   def deiconify(self):
-    # self.text.see(tkinter.END)
     tkinter.Toplevel.deiconify(self)
 
 
