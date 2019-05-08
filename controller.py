@@ -11,6 +11,7 @@ import time
 import tkinter
 from tkinter.scrolledtext import ScrolledText
 
+from module import alarm_list
 from module import hall_probe
 from module import mover_controller
 from module import param_manager
@@ -28,6 +29,7 @@ class Controller(tkinter.Frame):
     self.daq_status = 'IDLE'
     self.step_status = 'IDLE'
     self.hpc_status = 'IDLE'
+    self.alarm_list = alarm_list.AlarmListWindow()
     tkinter.Frame.__init__(self)
     self.__make_menu()
     self.__make_label()
@@ -39,8 +41,8 @@ class Controller(tkinter.Frame):
     if not os.path.isdir(self.data_path):
       os.mkdir(self.data_path)
     self.mover = mover_controller.MoverController()
-    self.servo_status = dict()
-    self.zero_return_status = dict()
+    self.servo_status = {'x': 0, 'y': 0, 'z': 0}
+    self.zero_return_status = {'x': 0, 'y': 0, 'z': 0}
     self.mover_position_mon = {'x': 0., 'y': 0., 'z': 0.}
     self.mover_position_set = {'x': 0., 'y': 0., 'z': 0.}
     if self.mover.device is None:
@@ -170,6 +172,8 @@ class Controller(tkinter.Frame):
     self.master.config(menu=menubar)
     self.menu1 = tkinter.Menu(menubar, tearoff=0)
     menubar.add_cascade(label='Control', menu=self.menu1)
+    self.menu1.add_command(label='Alarm list',
+                           command=self.alarm_list.deiconify)
     self.menu1.add_command(label='Print parameter',
                            command=self.print_parameter)
     self.menu1.add_command(label='Print mover parameter',
@@ -315,10 +319,10 @@ class Controller(tkinter.Frame):
   #____________________________________________________________________________
   def config_normal(self, widget, label=None):
     if label is None:
-      if widget.cget('state') != 'normal':
+      if widget.cget('state') != tkinter.NORMAL:
         widget.config(state=tkinter.NORMAL)
     else:
-      if widget.entrycget(label, 'state') != 'normal':
+      if widget.entrycget(label, 'state') != tkinter.NORMAL:
         widget.entryconfig(label, state=tkinter.NORMAL)
 
   #____________________________________________________________________________
@@ -372,6 +376,14 @@ class Controller(tkinter.Frame):
         utility.print_info(f'MVC  ID = {val} inching down ' +
                            f'{self.manual_inching_e.get()} mm')
         self.mover.inching_up(val)
+
+  #____________________________________________________________________________
+  def n_enable(self):
+    count = 0
+    for key, val in self.mover_enable.items():
+      if val.get():
+        count += 1
+    return count
 
   #____________________________________________________________________________
   def print_mover_parameter(self):
@@ -535,9 +547,8 @@ class Controller(tkinter.Frame):
     if self.mover_status == 'MOVING':
       utility.print_info('MVC  stop')
       for key, val in mover_controller.MoverController.DEVICE_LIST.items():
-        if not self.mover_enable[key].get():
-          continue
-        self.mover.stop(val)
+        if self.mover_enable[key].get():
+          self.mover.stop(val)
 
   #____________________________________________________________________________
   def updater(self):
@@ -562,6 +573,8 @@ class Controller(tkinter.Frame):
     for key in mover_controller.MoverController.DEVICE_LIST:
       if self.mover_enable[key].get() and self.servo_status[key] != 1:
         servo_status = False
+    if self.n_enable() == 0:
+      servo_status = False
     if self.mover_good:
       if self.mover_status == 'IDLE':
         self.mover_label.config(text='MVC: Idle', fg='blue', bg='black')
@@ -621,12 +634,11 @@ class Controller(tkinter.Frame):
       self.mover_status = 'ERROR'
       utility.print_warning(f'MVC  failed to update (device is None)')
       return
-    count = 0
+    count = self.n_enable()
     self.config_normal(self.menu1, 'Print mover parameter')
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
         continue
-      count += 1
       if not self.set_manual[key]:
         self.set_manual[key] = self.mover.set_manual(val)
         if not self.set_manual[key]:
@@ -711,8 +723,9 @@ class Controller(tkinter.Frame):
         self.config_disabled(self.menu1, 'Zero return')
         self.config_disabled(self.bservo_off)
       else:
-        self.config_normal(self.menu1, 'Zero return')
-        self.config_normal(self.bservo_off)
+        if count > 0:
+          self.config_normal(self.menu1, 'Zero return')
+          self.config_normal(self.bservo_off)
     else:
       if alarm_status_all == 0:
         self.config_normal(self.bservo_on)
