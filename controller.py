@@ -39,6 +39,7 @@ class Controller(tkinter.Frame):
     if not os.path.isdir(self.data_path):
       os.mkdir(self.data_path)
     self.mover = mover_controller.MoverController()
+    self.servo_status = dict()
     self.zero_return_status = dict()
     self.mover_position_mon = {'x': 0., 'y': 0., 'z': 0.}
     self.mover_position_set = {'x': 0., 'y': 0., 'z': 0.}
@@ -171,7 +172,9 @@ class Controller(tkinter.Frame):
     menubar.add_cascade(label='Control', menu=self.menu1)
     self.menu1.add_command(label='Print parameter',
                            command=self.print_parameter)
-    self.config_disabled(self.menu1, 'Print parameter')
+    self.menu1.add_command(label='Print mover parameter',
+                           command=self.print_mover_parameter)
+    self.config_disabled(self.menu1, 'Print mover parameter')
     self.menu1.add_separator()
     self.menu1.add_command(label='Zero return', command=self.zero_return)
     self.config_disabled(self.menu1, 'Zero return')
@@ -210,6 +213,7 @@ class Controller(tkinter.Frame):
                            command=self.manual_inching_up)
     self.menu3.add_command(label='Force Inching Down',
                            command=self.manual_inching_down)
+    self.menu3.add_command(label='Force Start', command=self.start)
     self.menu3.add_command(label='Force Stop', command=self.stop)
 
   #____________________________________________________________________________
@@ -370,12 +374,17 @@ class Controller(tkinter.Frame):
         self.mover.inching_up(val)
 
   #____________________________________________________________________________
-  def print_parameter(self):
+  def print_mover_parameter(self):
     ''' print all mover parameters '''
-    utility.print_info(f'MVC  print parameter')
+    utility.print_info(f'MVC  print mover parameter')
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if self.mover_enable[key].get():
         self.mover.print_parameter(val)
+
+  #____________________________________________________________________________
+  def print_parameter(self):
+    ''' print parameters '''
+    param_manager.print_parameter()
 
   #____________________________________________________________________________
   def reconnect_mover_driver(self):
@@ -496,12 +505,13 @@ class Controller(tkinter.Frame):
 
   #____________________________________________________________________________
   def start(self):
+    name = (str(datetime.datetime.now())[:19]
+            .replace(':', '').replace("-", '').replace(' ', '_'))
+    utility.set_log_file((os.path.join(self.log_dir, name + '.log')))
     utility.print_info('DAQ  start')
     self.daq_status = 'RUNNING'
     self.config_disabled(self.bstart)
     self.config_normal(self.bstop)
-    name = (str(datetime.datetime.now())[:19]
-            .replace(':', '').replace("-", '').replace(' ', '_'))
     self.output_name = os.path.join(self.data_path, name + '.txt')
     utility.print_info(f'DAQ  open file: {self.output_name}')
     self.output_file = open(self.output_name, 'w')
@@ -510,7 +520,7 @@ class Controller(tkinter.Frame):
                            f'{param_manager.get("step_file")}\n# speed = ' +
                            f'{self.get_speed()}\n#\n' +
                            f'# date time step x y z Bx By Bz\n\n')
-    utility.set_log_file((os.path.join(self.log_dir, name + '.log')))
+
 
   #____________________________________________________________________________
   def stop(self):
@@ -548,10 +558,15 @@ class Controller(tkinter.Frame):
     self.lasttime.config(text=f'Last Update: {now}')
     data_path = param_manager.get('data_path')
     self.disklink.config(text=f'Data Storage Path: {data_path}')
+    servo_status = True
+    for key in mover_controller.MoverController.DEVICE_LIST:
+      if self.mover_enable[key].get() and self.servo_status[key] != 1:
+        servo_status = False
     if self.mover_good:
       if self.mover_status == 'IDLE':
         self.mover_label.config(text='MVC: Idle', fg='blue', bg='black')
-        if self.daq_status == 'IDLE' and self.hpc_status == 'RUNNING':
+        if (self.daq_status == 'IDLE' and self.hpc_status == 'RUNNING' and
+            servo_status):
           self.config_normal(self.bstart)
         else:
           self.config_disabled(self.bstart)
@@ -607,7 +622,7 @@ class Controller(tkinter.Frame):
       utility.print_warning(f'MVC  failed to update (device is None)')
       return
     count = 0
-    self.config_normal(self.menu1, 'Print parameter')
+    self.config_normal(self.menu1, 'Print mover parameter')
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
         continue
@@ -657,20 +672,19 @@ class Controller(tkinter.Frame):
     # if count == 0:
     #   self.mover_good = True
     #   return
-    servo_status = dict()
     servo_status_all = 0
     zero_return_status_all = 0
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       if not self.mover_enable[key].get():
         self.lservo_status[key].config(text='Servo N/A', fg='gray25')
         continue
-      servo_status[key] = self.mover.servo_status(val)
-      servo_status_all += servo_status[key]
+      self.servo_status[key] = self.mover.servo_status(val)
+      servo_status_all += self.servo_status[key]
       self.zero_return_status[key] = self.mover.zero_return_status(val)
       zero_return_status_all += self.zero_return_status[key]
-      if servo_status[key] == 1:
+      if self.servo_status[key] == 1:
         self.lservo_status[key].config(text=f'Servo ON', fg='green')
-      elif servo_status[key] == 0:
+      elif self.servo_status[key] == 0:
         self.lservo_status[key].config(text=f'Servo OFF', fg='blue')
     pos_txt = f'   {"current":8}  {"command":8}\n'
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
@@ -681,7 +695,7 @@ class Controller(tkinter.Frame):
         self.mover_position_set[key] = vset
         if (abs(vmon - vset) >
             int(param_manager.get('position_dev')) and
-            servo_status[key] == 1):
+            self.servo_status[key] == 1):
           self.mover_status = 'MOVING'
         if vmon != -999999. and vset != -999999.:
           pos_txt += f'{zero}{key.upper()} {vmon:9.1f}({vset:9.1f})\n'
@@ -768,20 +782,20 @@ class Controller(tkinter.Frame):
                 float(param_manager.get('position_dev'))*1e-3):
               status = False
               if self.mover_status == 'IDLE':
-                utility.print_warning(f'STP   ID = {val} ' +
+                utility.print_warning(f'STP  ID = {val} ' +
                                       'step might be failed -> RE-ADJUST')
                 self.mover.go_to(val, int(self.last_step[key]))
-        if status:
+        if status and self.hallprobe.dev_status:
           now = str(datetime.datetime.now())[:19]
-          # time.sleep(2)
+          utility.print_info(f'DAQ  save step: {self.get_step()}')
           self.step_status = 'IDLE'
           buf = f'{now} {self.get_step():>6} '
           # for key, val in device_list.items():
           #   buf += f'{self.last_step[key]:9.1f} '
           for key, val in device_list.items():
             buf += f'{self.mover_position_mon[key]:9.1f} '
-          for key, val in hall_probe.HallProbeController.CHANNEL_LIST:
-            buf += f'{self.hallprobe.field[key]:10.5f} '
+          for key in hall_probe.HallProbeController.CHANNEL_LIST:
+            buf += f'{self.hallprobe.field[key][0]:10.5f} '
           # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
           self.output_file.write(buf + '\n')
           self.output_file.flush()

@@ -274,7 +274,7 @@ class MoverController():
     rdevice_id, cmd_no, data = self.send(device_id, 0x0c)
     status = 0x0 if data is None or len(data) != 2 else int(data, 16)
     if status == 0x1:
-      time.sleep(2)
+      time.sleep(0.5)
     else:
       utility.print_warning(f'MVC  ID = {device_id} failed turn servo off')
 
@@ -284,7 +284,7 @@ class MoverController():
     rdevice_id, cmd_no, data = self.send(device_id, 0x0b)
     status = 0x0 if data is None or len(data) != 2 else int(data, 16)
     if status == 0x1:
-      time.sleep(2)
+      time.sleep(0.5)
     else:
       utility.print_warning(f'MVC  ID = {device_id} failed turn servo on')
 

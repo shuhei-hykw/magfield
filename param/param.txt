@@ -17,4 +17,4 @@ position_dev	5	allowable position deviation [um]
 gpib_server_host	192.168.2.9
 gpib_server_port	1234
 gpib_address		12
-field_dev		0.5 [%]
+field_dev		0.3 [%]

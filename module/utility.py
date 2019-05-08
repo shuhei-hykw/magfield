@@ -5,6 +5,7 @@ import sys
 import tkinter
 from tkinter.scrolledtext import ScrolledText
 
+stdout = False
 log_widget = None
 log_file = None
 debug_on = False
@@ -62,31 +63,35 @@ def close_log_file():
 #______________________________________________________________________________
 def print_debug(arg):
   if debug_on:
-    print(str(datetime.datetime.now())[:19] + ' ' +
-          Utility.blue + Utility.bold + ' DEBUG' + Utility.end + '   ' + arg)
+    if stdout:
+      print(str(datetime.datetime.now())[:19] + ' ' +
+            Utility.blue + Utility.bold + ' DEBUG' + Utility.end + '   ' + arg)
     add_text(str(datetime.datetime.now())[:19] + '  DEBUG   ' + arg,
              fgcolor='blue')
 
 #______________________________________________________________________________
 def print_error(arg):
   if error_on:
-    print(str(datetime.datetime.now())[:19] + ' ' +
-          Utility.red + Utility.bold + ' ERROR ' + Utility.end + '  ' + arg)
+    if stdout:
+      print(str(datetime.datetime.now())[:19] + ' ' +
+            Utility.red + Utility.bold + ' ERROR ' + Utility.end + '  ' + arg)
     add_text(str(datetime.datetime.now())[:19] + '  ERROR   ' + arg,
              fgcolor='red')
 
 #______________________________________________________________________________
 def print_info(arg):
   if info_on:
-    print(str(datetime.datetime.now())[:19] + ' ' +
-          ' INFO' + '    ' + arg)
+    if stdout:
+      print(str(datetime.datetime.now())[:19] + ' ' +
+            ' INFO' + '    ' + arg)
     add_text(str(datetime.datetime.now())[:19] + '  INFO    ' + arg)
 
 #______________________________________________________________________________
 def print_warning(arg):
   if warning_on:
-    print(str(datetime.datetime.now())[:19] + ' ' +
-          Utility.yellow + Utility.bold + 'WARNING' + Utility.end + '  ' + arg)
+    if stdout:
+      print(str(datetime.datetime.now())[:19] + ' ' +
+            Utility.yellow + Utility.bold + 'WARNING' + Utility.end + '  ' + arg)
     add_text(str(datetime.datetime.now())[:19] + ' WARNING  ' + arg,
              fgcolor='orange3')
 
