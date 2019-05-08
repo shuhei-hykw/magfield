@@ -13,6 +13,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from module import alarm_list
 from module import hall_probe
+from module import nmr
 from module import mover_controller
 from module import param_manager
 from module import step_manager
@@ -29,6 +30,7 @@ class Controller(tkinter.Frame):
     self.daq_status = 'IDLE'
     self.step_status = 'IDLE'
     self.hpc_status = 'IDLE'
+    self.nmr_status = 'IDLE'
     self.alarm_list = alarm_list.AlarmListWindow()
     tkinter.Frame.__init__(self)
     self.__make_menu()
@@ -48,6 +50,7 @@ class Controller(tkinter.Frame):
     if self.mover.device is None:
       utility.print_error(f'MVC  failed to open: {self.mover.device_name}')
     self.hallprobe = hall_probe.HallProbeController()
+    self.nmr = nmr.NMRController()
     self.master.title(f'Field Mapping Controller (pid={os.getpid()})')
     self.master.resizable(0, 1)
     self.pack(fill=tkinter.Y, expand=True)
@@ -302,10 +305,10 @@ class Controller(tkinter.Frame):
       now = time.time()
       if now - self.last_under_transition > 4:
         self.last_under_transition = now
-        try:
-          subprocess.Popen(['aplay', '-q', self.sound_file])
-        except FileNotFoundError:
-          pass
+        # try:
+        #   subprocess.Popen(['aplay', '-q', self.sound_file])
+        # except FileNotFoundError:
+        #   pass
 
   #____________________________________________________________________________
   def config_disabled(self, widget, label=None):
@@ -531,7 +534,7 @@ class Controller(tkinter.Frame):
                            f'{param_manager.get("param_file")}\n# step = ' +
                            f'{param_manager.get("step_file")}\n# speed = ' +
                            f'{self.get_speed()}\n#\n' +
-                           f'# date time step x y z Bx By Bz\n\n')
+                           f'# date time step x y z Bx By Bz NMR\n\n')
 
 
   #____________________________________________________________________________
@@ -558,6 +561,7 @@ class Controller(tkinter.Frame):
     utility.set_error(self.print_error.get() == 1)
     self.update_mover()
     self.update_hallprobe()
+    self.update_nmr()
     self.update_label()
     self.check_under_transition()
     self.update_step()
@@ -765,6 +769,18 @@ class Controller(tkinter.Frame):
       self.config_normal(self.manual_inching_e)
 
   #____________________________________________________________________________
+  def update_nmr(self):
+    if (not self.nmr.socket.is_open or
+        self.nmr.thread_state != 'RUNNING'):
+      self.nmr_status = 'ERROR'
+      return
+    if self.nmr.hold:
+      mag_txt = f'{self.nmr.field:8.6f} [T]'
+    else:
+      mag_txt = 'UNDETECTABLE [T]'
+    self.lnmr.config(text=mag_txt)
+
+  #____________________________________________________________________________
   def update_step(self):
     if self.mover_status == 'ERROR':
       self.stop()
@@ -798,7 +814,7 @@ class Controller(tkinter.Frame):
                 utility.print_warning(f'STP  ID = {val} ' +
                                       'step might be failed -> RE-ADJUST')
                 self.mover.go_to(val, int(self.last_step[key]))
-        if status and self.hallprobe.dev_status:
+        if status and self.hallprobe.dev_status and self.nmr.hold:
           now = str(datetime.datetime.now())[:19]
           utility.print_info(f'DAQ  save step: {self.get_step()}')
           self.step_status = 'IDLE'
@@ -809,6 +825,7 @@ class Controller(tkinter.Frame):
             buf += f'{self.mover_position_mon[key]:9.1f} '
           for key in hall_probe.HallProbeController.CHANNEL_LIST:
             buf += f'{self.hallprobe.field[key][0]:10.5f} '
+          buf += f'{self.nmr.field:10.5f}'
           # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
           self.output_file.write(buf + '\n')
           self.output_file.flush()

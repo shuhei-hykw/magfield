@@ -18,3 +18,7 @@ gpib_server_host	192.168.2.9
 gpib_server_port	1234
 gpib_address		12
 field_dev		0.3 [%]
+
+# NMR
+nmr_server_host		192.168.30.2
+nmr_server_port		10001
