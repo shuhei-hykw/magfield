@@ -632,7 +632,7 @@ class Controller(tkinter.Frame):
     self.mover_status = 'IDLE'
     if self.mover.device is None:
       self.mover_status = 'ERROR'
-      utility.print_warning(f'MVC  failed to update (device is None)')
+      # utility.print_error(f'MVC  failed to update (device is None)')
       return
     count = self.n_enable()
     self.config_normal(self.menu1, 'Print mover parameter')
