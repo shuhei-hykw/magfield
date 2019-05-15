@@ -21,14 +21,14 @@ class MoverController():
   def __init__(self, baudrate=115200, timeout=0.5):
     self.device_name = param_manager.get('mover_device')
     try:
-      utility.print_info(f'MVC  open serial device {self.device_name}')
-      utility.print_info(f'MVC  - parity = {serial.PARITY_NONE}')
-      utility.print_info(f'MVC  - baudrate = {baudrate}')
-      utility.print_info(f'MVC  - timeout = {timeout}')
       self.device = serial.Serial(self.device_name,
                                   parity=serial.PARITY_NONE,
                                   baudrate=baudrate,
                                   timeout=timeout)
+      utility.print_info(f'MVC  open serial device {self.device_name}')
+      # utility.print_info(f'MVC  - parity = {serial.PARITY_NONE}')
+      # utility.print_info(f'MVC  - baudrate = {baudrate}')
+      # utility.print_info(f'MVC  - timeout = {timeout}')
     except serial.serialutil.SerialException:
       self.device = None
     for i in self.__class__.DEVICE_LIST.keys():

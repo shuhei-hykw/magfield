@@ -19,11 +19,14 @@ step_file	param/test_step_z-20.txt
 position_dev	5	allowable position deviation [um]
 xy_limit_r	275
 
-# Hall probe
+# Hall probe (LSCI,Model460)
 gpib_server_host	192.168.30.3
 gpib_server_port	1234
 gpib_address		12
 field_dev		0.06 [%]
+
+# Hall probe (LSCI,Model425)
+ref_device	/dev/ttyUSB1
 
 # NMR
 nmr_server_host		192.168.30.2

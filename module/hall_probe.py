@@ -75,8 +75,10 @@ class HallProbeController():
         self.field[key] = (0, '')
         self.field_dev[key] = 0
         continue
-      m = self.socket.send('fieldm?')
-      u = self.socket.send('unit?')
+      #m = self.socket.send('fieldm?')
+      #u = self.socket.send('unit?')
+      m = 'm'
+      u = 'T'
       try:
         field = float(val)
       except (TypeError, ValueError):
