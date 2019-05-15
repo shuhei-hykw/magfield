@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import binascii
+import math
 import serial
 import threading
 import time
@@ -78,6 +79,24 @@ class MoverController():
     ret_int = binascii.crc_hqx(crc_data, 0)
     ret = ret_int.to_bytes(2, 'big')
     return ret
+
+  #____________________________________________________________________________
+  def check_limit(self):
+    rmon = 0
+    rset = 0
+    for key, val in self.__class__.DEVICE_LIST.items():
+      if val is not None:
+        vmon, vset = self.get_position(val)
+        if key != 'z':
+          rmon += (vmon - float(param_manager.get(f'center_{key}')))**2
+          rset += (vset - float(param_manager.get(f'center_{key}')))**2
+    limit = float(param_manager.get('xy_limit_r'))**2
+    status = (rmon < limit and rset < limit)
+    if not status:
+      utility.print_error(f'MVC  rmon={math.sqrt(rmon):.1f}, ' +
+                          f'rset={math.sqrt(rset):.1f}, ' +
+                          f'limit={math.sqrt(limit):.1f}')
+    return status
 
   #____________________________________________________________________________
   def device_info(self, device_id):

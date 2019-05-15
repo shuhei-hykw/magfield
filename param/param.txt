@@ -10,14 +10,20 @@ mover_device	/dev/ttyUSB0
 device_id_x	0
 device_id_y	1
 device_id_z	2
-step_file	param/test_step.txt
+center_x	298.1
+center_y	-215.7
+#center_z	-213.3 center of mover range
+center_z	-212.1 beam height
+step_file	param/test_step_z-20.txt
+#step_file	param/r270_z47-290.txt
 position_dev	5	allowable position deviation [um]
+xy_limit_r	275
 
 # Hall probe
-gpib_server_host	192.168.2.9
+gpib_server_host	192.168.30.3
 gpib_server_port	1234
 gpib_address		12
-field_dev		0.3 [%]
+field_dev		0.06 [%]
 
 # NMR
 nmr_server_host		192.168.30.2

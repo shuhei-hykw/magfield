@@ -28,9 +28,9 @@ def initialize(step_file):
         if len(columns) < 3 or '#' in columns[0]:
           continue
         # cmd_pos = [int]
-        step_list.append({'x': int(columns[0]),
-                          'y': int(columns[1]),
-                          'z': int(columns[2])})
+        step_list.append({'x': float(columns[0]),
+                          'y': float(columns[1]),
+                          'z': float(columns[2])})
         utility.print_debug(f'STP  step#{i} {step_list[-1]}')
         i += 1
       utility.print_info(f'STP  read {i} steps')

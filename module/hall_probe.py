@@ -36,7 +36,7 @@ class HallProbeController():
       utility.print_error('HPC  failed to connect ' +
                           f'host = {host}, port = {port}')
     self.field = dict()
-    self.max_history = 10
+    self.max_history = 4
     self.field_history = dict()
     for key in self.__class__.CHANNEL_LIST:
       self.field_history[key] = []
@@ -77,13 +77,24 @@ class HallProbeController():
         continue
       m = self.socket.send('fieldm?')
       u = self.socket.send('unit?')
-      self.field[key] = (float(val), m + u)
+      try:
+        field = float(val)
+      except (TypeError, ValueError):
+        field = 0
+      if field == 0:
+        status = False
+        continue
+      self.field[key] = (field, m + u)
       if len(self.field_history[key]) == self.max_history:
         self.field_history[key].pop(0)
-      self.field_history[key].append(float(val))
+      self.field_history[key].append(field)
       dev = abs(np.std(self.field_history[key]) /
                 np.mean(self.field_history[key]))
       self.field_dev[key] = dev
-      if self.dev_limit < dev*100:
-        status = False
+      if 'z' in key:
+        if self.dev_limit < dev*100:
+          status = False
+      else:
+        if self.dev_limit*10 < dev*100:
+          status = False
     self.dev_status = status

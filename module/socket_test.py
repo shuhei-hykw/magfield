@@ -2,7 +2,7 @@
 
 import socket
 
-HOST = '192.168.2.90'
+HOST = '192.168.30.3'
 PORT = 1234
 
 if __name__ == '__main__':

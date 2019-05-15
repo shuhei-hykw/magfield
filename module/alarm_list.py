@@ -81,24 +81,24 @@ class AlarmListWindow(tkinter.Toplevel):
 
   #____________________________________________________________________________
   def __make_layout(self):
-    self.frame = tkinter.Frame(self)
-    self.frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
-    self.tree = tkinter.ttk.Treeview(self.frame, height=len(alarm_list))
-    self.tree['columns'] = (1, 2, 3)
-    self.tree['show'] = 'headings'
-    self.tree.column(1, width=50, anchor=tkinter.CENTER)
-    self.tree.column(2, width=300)
-    self.tree.column(3, width=450)
-    self.tree.heading(1, text='Code')
-    self.tree.heading(2, text='Alarm name')
-    self.tree.heading(3, text='Content')
+    frame = tkinter.Frame(self)
+    frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+    tree = tkinter.ttk.Treeview(frame, height=len(alarm_list))
+    tree['columns'] = (1, 2, 3)
+    tree['show'] = 'headings'
+    tree.column(1, width=50, anchor=tkinter.CENTER)
+    tree.column(2, width=300)
+    tree.column(3, width=450)
+    tree.heading(1, text='Code')
+    tree.heading(2, text='Alarm name')
+    tree.heading(3, text='Content')
     for i, e in enumerate(alarm_list):
-      self.tree.insert('', 'end', tags=i+1, values=(f'{e[0]}', e[1], e[2]))
+      tree.insert('', 'end', tags=i+1, values=(f'{e[0]}', e[1], e[2]))
       if i%2 == 1:
-        self.tree.tag_configure(i+1, background='#eeeeee')
-    self.tree.config(selectmode='none')
-    self.tree.state(('disabled',))
-    self.tree.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+        tree.tag_configure(i+1, background='#eeeeee')
+    tree.config(selectmode='none')
+    tree.state(('disabled',))
+    tree.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
   #____________________________________________________________________________
   def deiconify(self):
