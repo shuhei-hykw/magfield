@@ -14,8 +14,8 @@ center_x	298.1
 center_y	-215.7
 #center_z	-213.3 center of mover range
 center_z	-212.1 beam height
-step_file	param/test_step_z-20.txt
-#step_file	param/r270_z47-290.txt
+#step_file	param/test_step_z-20.txt
+step_file	param/r270_z47-290.txt
 position_dev	5	allowable position deviation [um]
 xy_limit_r	275
 

@@ -3,7 +3,7 @@
 import serial
 import time
 
-DEVICE = '/dev/ttyUSB0'
+DEVICE = '/dev/ttyUSB1'
 TERM = '\r\n'
 
 if __name__ == '__main__':

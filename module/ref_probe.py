@@ -30,17 +30,22 @@ class RefProbeController():
     self.max_history = 4
     self.field_history = []
     self.field_dev = 0
-    self.status = False
+    self.status = True
     self.thread = threading.Thread(target=self.run_thread)
     self.thread.setDaemon(True)
     self.thread.start()
 
   #____________________________________________________________________________
-  def send(data):
-    data = data.encode('utf-8').rstrip(EOS)
-    data += EOS
+  def send(self, data):
+    data = data.encode('utf-8').rstrip(self.__class__.EOS)
+    data += self.__class__.EOS
     self.device.write(data)
-    return self.device.read_until(EOS)
+    ret = self.device.read_until(self.__class__.EOS)
+    data = b''
+    for d in ret:
+      data += (d & 0x7f).to_bytes(1, 'big')
+    decoded = data.decode()
+    return decoded
 
   #____________________________________________________________________________
   def get_idn(self):
@@ -58,13 +63,13 @@ class RefProbeController():
       field = float(val)
     except (TypeError, ValueError):
       field = 0
-    status = (field != 0)
-    if not status:
+    self.status = (field != 0)
+    if not self.status:
       return
     self.field = field
-    if len(self.field_history) == self.max_history:
-      self.field_history.pop(0)
-      self.field_history.append(field)
-    dev = abs(np.std(self.field_history) /
-              np.mean(self.field_history))
-    self.field_dev = dev
+    # if len(self.field_history) == self.max_history:
+    #   self.field_history.pop(0)
+    #   self.field_history.append(field)
+    # dev = abs(np.std(self.field_history) /
+    #           np.mean(self.field_history))
+    # self.field_dev = dev

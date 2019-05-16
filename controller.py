@@ -24,6 +24,7 @@ from module import mover_controller
 from module import param_manager
 from module import progress
 from module import step_manager
+from module import temp_monitor
 from module import utility
 
 #______________________________________________________________________________
@@ -60,6 +61,7 @@ class Controller(tkinter.Frame):
     self.zero_return_status_all = 0
     self.mover_position_mon = {'x': 0., 'y': 0., 'z': 0.}
     self.mover_position_set = {'x': 0., 'y': 0., 'z': 0.}
+    self.last_move = time.time()
     if self.mover.device is None:
       utility.print_error(f'MVC  failed to open: {self.mover.device_name}')
     self.hallprobe = hall_probe.HallProbeController()
@@ -67,6 +69,7 @@ class Controller(tkinter.Frame):
       self.nmr = nmr.NMRController()
     else:
       self.ref = ref_probe.RefProbeController()
+    self.temp = temp_monitor.TempMonitor()
     self.master.title(f'Field Mapping Controller (pid={os.getpid()})')
     self.master.resizable(0, 1)
     self.pack(fill=tkinter.Y, expand=True)
@@ -585,7 +588,8 @@ class Controller(tkinter.Frame):
                            f'{param_manager.get("step_file")}\n# speed = ' +
                            f'{self.get_speed()}\n#\n' +
                            f'# date time step x y z Bx By Bz ' +
-                           ('NMR' if USE_NMR else 'REF') + '\n\n')
+                           ('NMR' if USE_NMR else 'REF') +
+                           ' Temp1 Temp2\n\n')
 
 
   #____________________________________________________________________________
@@ -628,26 +632,29 @@ class Controller(tkinter.Frame):
     if not self.free_daq_mode.get():
       return
     if (self.daq_status == 'RUNNING' and
-        self.hallprobe.dev_status):# and self.nmr.hold:
+        self.hallprobe.dev_status and self.ref.status):
       # for i in range(10):
-        now = str(datetime.datetime.now())#[:19]
-        utility.print_info(f'DAQ  save field : {self.free_daq_nevent}')
-        buf = f'{now} {self.free_daq_nevent:>6} '
-        for key, val in device_list.items():
-          buf += f'{self.mover_position_mon[key]:9.1f} '
-        for key in hall_probe.HallProbeController.CHANNEL_LIST:
-          field = self.hallprobe.field[key][0]
-          if 'mT' in self.hallprobe.field[key][1]:
-            field *= 1e-3
-          buf += f'{field:13.8f} '
-        if USE_NMR:
-          buf += f'{self.nmr.field:10.5f}'
-        else:
-          buf += f'{self.ref.field:10.5f}'
-        # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
-        self.output_file.write(buf + '\n')
-        self.output_file.flush()
-        self.free_daq_nevent += 1
+      now = str(datetime.datetime.now())#[:19]
+      utility.print_info(f'DAQ  save field : {self.free_daq_nevent}')
+      buf = f'{now} {self.free_daq_nevent:>6} '
+      for key, val in device_list.items():
+        buf += f'{self.mover_position_mon[key]:9.3f} '
+      for key in hall_probe.HallProbeController.CHANNEL_LIST:
+        field = self.hallprobe.field_mean[key]
+        # field = self.hallprobe.field[key][0]
+        if 'mT' in self.hallprobe.field[key][1]:
+          field *= 1e-3
+        buf += f'{field:13.8f} '
+      if USE_NMR:
+        buf += f'{self.nmr.field:10.5f}'
+      else:
+        buf += f'{self.ref.field:10.7f}'
+      # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
+      buf += f'{self.temp.temp[0]:6.1f}'
+      buf += f'{self.temp.temp[1]:6.1f}'
+      self.output_file.write(buf + '\n')
+      self.output_file.flush()
+      self.free_daq_nevent += 1
 
   #____________________________________________________________________________
   def update_label(self):
@@ -714,7 +721,7 @@ class Controller(tkinter.Frame):
       val = self.hallprobe.field[key][0]
       unit = self.hallprobe.field[key][1]
       dev = self.hallprobe.field_dev[key]
-      mag_txt += f'B{key} {val:10.5f} [{unit}] ({dev*100:6.4f}%)\n'
+      mag_txt += f'B{key} {val:10.5f} [{unit}] ({dev*100:9.4f}%)\n'
     self.lfield.config(text=mag_txt)
     if self.hallprobe.dev_status:
       self.hpc_status = 'RUNNING'
@@ -793,11 +800,16 @@ class Controller(tkinter.Frame):
         self.lservo_status[key].config(text=f'Servo ON', fg='green')
       elif self.servo_status[key] == 0:
         self.lservo_status[key].config(text=f'Servo OFF', fg='blue')
-    pos_txt = f'   {"mon":^8}  {"set":^8}\n'
+    pos_txt = f'   {"mon":^8}  {"set":^8}  {"mag":^8}\n'
     for key, val in mover_controller.MoverController.DEVICE_LIST.items():
       zero = ' ' if self.zero_return_status[key] == 1 else '*'
       if val is not None: #self.mover_enable[key].get():
         vmon, vset = self.mover.get_position(val)
+        center = float(param_manager.get(f'center_{key}'))
+        if 'x' in key:
+          vmag = vmon - center
+        else:
+          vmag = center - vmon
         self.mover_position_mon[key] = vmon
         self.mover_position_set[key] = vset
         if (abs(vmon - vset) >
@@ -805,11 +817,12 @@ class Controller(tkinter.Frame):
             self.servo_status[key] == 1):
           self.mover_status = 'MOVING'
         if vmon != -999999. and vset != -999999.:
-          pos_txt += f'{zero}{key.upper()} {vmon:9.1f}({vset:9.1f})\n'
+          pos_txt += (f'{zero}{key.upper()} {vmon:9.1f}({vset:9.1f})' +
+                      f'{vmag:9.1f}\n')
         else:
-          pos_txt += f'{zero}{key.upper()} {"-"*9}({"-"*9})\n'
+          pos_txt += f'{zero}{key.upper()} {"-"*9}({"-"*9}){"-"*9}\n'
       else:
-        pos_txt += f'{zero}{key.upper()} {"-"*9:9}({"-"*9:9})\n'
+        pos_txt += f'{zero}{key.upper()} {"-"*9:9}({"-"*9:9}){"-"*9}\n'
     self.lmover_position.config(text=pos_txt)
     if not self.mover.check_limit():
       self.mover_status = 'ERROR'
@@ -880,7 +893,17 @@ class Controller(tkinter.Frame):
 
   #____________________________________________________________________________
   def update_ref(self):
-    pass
+    if (self.ref.device is None or
+        self.ref.thread_state != 'RUNNING'):
+      self.ref_status = 'ERROR'
+      return
+    else:
+      self.ref_status = 'IDLE'
+    if self.ref.status:
+      mag_txt = f'{self.ref.field:10.7f} [T]'
+    else:
+      mag_txt = 'UNDETECTABLE [T]'
+    self.lref.config(text=mag_txt)
 
   #____________________________________________________________________________
   def update_step(self):
@@ -893,7 +916,8 @@ class Controller(tkinter.Frame):
     step_manager.step_number = self.get_step()
     device_list = mover_controller.MoverController.DEVICE_LIST
     if self.daq_status == 'RUNNING':
-      if self.mover_status == 'IDLE' and self.step_status == 'IDLE':
+      if (self.mover_status == 'IDLE' and self.step_status == 'IDLE' and
+          self.hallprobe.dev_status and self.ref.status):
         self.config_disabled(self.step_e)
         self.last_step = step_manager.step()
         if self.last_step is not None:
@@ -905,6 +929,7 @@ class Controller(tkinter.Frame):
             if self.mover_enable[key].get():
               self.mover.go_to(val, float(self.last_step[key]))
               self.step_status = 'STEPPING'
+          self.last_step_time = time.time()
         else:
           self.stop()
       else:
@@ -918,27 +943,31 @@ class Controller(tkinter.Frame):
                 utility.print_warning(f'STP  ID = {val} ' +
                                       'step might be failed -> RE-ADJUST')
                 self.mover.go_to(val, float(self.last_step[key]))
-        if status and self.hallprobe.dev_status:# and self.nmr.hold:
+        if (status and self.hallprobe.dev_status and self.ref.status and
+            time.time() - self.last_step_time > 3.0):
           # for i in range(10):
-            now = str(datetime.datetime.now())#[:19]
-            # utility.print_info(f'DAQ  save step : {self.get_step()}')
-            self.step_status = 'IDLE'
-            buf = f'{now} {self.get_step():>6} '
-            # for key, val in device_list.items():
-            #   buf += f'{self.last_step[key]:9.1f} '
-            for key, val in device_list.items():
-              buf += f'{self.mover_position_mon[key]:9.1f} '
-            for key in hall_probe.HallProbeController.CHANNEL_LIST:
-              field = self.hallprobe.field[key][0]
-              if 'mT' in self.hallprobe.field[key][1]:
-                field *= 1e-3
-              buf += f'{field:13.8f} '
-            if USE_NMR:
-              buf += f'{self.nmr.field:10.5f}'
-            else:
-              buf += f'{self.ref.field:10.5f}'
-            # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
-            self.output_file.write(buf + '\n')
+          now = str(datetime.datetime.now())#[:19]
+          # utility.print_info(f'DAQ  save step : {self.get_step()}')
+          self.step_status = 'IDLE'
+          buf = f'{now} {self.get_step():>6} '
+          # for key, val in device_list.items():
+          #   buf += f'{self.last_step[key]:9.1f} '
+          for key, val in device_list.items():
+            buf += f'{self.mover_position_mon[key]:9.3f} '
+          for key in hall_probe.HallProbeController.CHANNEL_LIST:
+            field = self.hallprobe.field_mean[key]
+            # field = self.hallprobe.field[key][0]
+            if 'mT' in self.hallprobe.field[key][1]:
+              field *= 1e-3
+            buf += f'{field:13.8f} '
+          if USE_NMR:
+            buf += f'{self.nmr.field:10.5f}'
+          else:
+            buf += f'{self.ref.field:10.7f}'
+          # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
+          buf += f'{self.temp.temp[0]:6.1f}'
+          buf += f'{self.temp.temp[1]:6.1f}'
+          self.output_file.write(buf + '\n')
           self.output_file.flush()
     else:
       self.config_normal(self.step_e)

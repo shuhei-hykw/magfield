@@ -36,6 +36,7 @@ class HallProbeController():
       utility.print_error('HPC  failed to connect ' +
                           f'host = {host}, port = {port}')
     self.field = dict()
+    self.field_mean = dict()
     self.max_history = 4
     self.field_history = dict()
     for key in self.__class__.CHANNEL_LIST:
@@ -75,9 +76,12 @@ class HallProbeController():
         self.field[key] = (0, '')
         self.field_dev[key] = 0
         continue
-      #m = self.socket.send('fieldm?')
-      #u = self.socket.send('unit?')
-      m = 'm'
+      m = self.socket.send('fieldm?')
+      # u = self.socket.send('unit?')
+      # if 'z' in key or 'v' in key:
+      #   m = ''
+      # else:
+      #   m = 'm'
       u = 'T'
       try:
         field = float(val)
@@ -90,13 +94,17 @@ class HallProbeController():
       if len(self.field_history[key]) == self.max_history:
         self.field_history[key].pop(0)
       self.field_history[key].append(field)
-      dev = abs(np.std(self.field_history[key]) /
-                np.mean(self.field_history[key]))
+      mean = np.mean(self.field_history[key])
+      dev = abs(np.std(self.field_history[key]) / mean)
+      self.field_mean[key] = mean
       self.field_dev[key] = dev
+      if mean < 1.0 and m == 'm':
+        continue
       if 'z' in key:
         if self.dev_limit < dev*100:
           status = False
       else:
         if self.dev_limit*10 < dev*100:
           status = False
+      #print(f'{time.time():<20}, {key}, {field:10.6f}, {mean:10.6f}, {dev:10.6f}')
     self.dev_status = status
