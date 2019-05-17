@@ -77,6 +77,7 @@ def update_hist():
   graph.Set(0)
   nevent = len(data)
   ipoint = 0
+  curr_step = 0
   for d in data.values():
     x, y, z = get_magnet_coordinate(float(d[3]),
                                     float(d[4]),
@@ -85,8 +86,10 @@ def update_hist():
     hist[1].Fill(z, y)
     hist[2].Fill(x, z)
     step = int(d[2])
+    curr_step = max(step, curr_step)
     graph.SetPoint(ipoint, get_timestamp(d), step)
     ipoint += 1
+  step = curr_step
   rems = (npoints - ipoint)*speed
   remd = int(rems/3600/24)
   remh = int((rems - remd*24*3600)/3600)
