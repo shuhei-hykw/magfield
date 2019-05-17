@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import datetime
+import numpy
 import os
 import ROOT
 
@@ -22,6 +23,18 @@ def get_magnet_coordinate(x, y, z):
   return xx, yy, zz
 
 #______________________________________________________________________________
+def get_timestamp(data):
+  y = int(data[0][:4])
+  m = int(data[0][5:7])
+  d = int(data[0][8:10])
+  H = int(data[1][:2])
+  M = int(data[1][3:5])
+  S = int(data[1][6:8])
+  us = int(data[1][9:])
+  dt = datetime.datetime(y, m, d, H, M, S, us)
+  return dt.timestamp()
+
+#______________________________________________________________________________
 def update():
   update_data()
   update_hist()
@@ -29,6 +42,8 @@ def update():
 #______________________________________________________________________________
 def update_data():
   global data
+  global speed
+  process_time_array = []
   for fname in sorted(os.listdir(data_dir)):
     fname = os.path.join(data_dir, fname)
     if not os.path.isfile(fname):
@@ -36,13 +51,20 @@ def update_data():
     mtime = os.stat(fname).st_mtime
     if mtime < 1557990000:
       continue
+    prev_time = None
     with open(fname) as f:
       for line in f:
         columns = line.split()
         if '#' in line or len(columns) < 10:
           continue
         key = columns[0] + columns[1]
-        data[key] = line.split()
+        data[key] = columns
+        curr_time = get_timestamp(columns)
+        if prev_time is not None:
+          process_time = curr_time - prev_time
+          process_time_array.append(process_time)
+        prev_time = curr_time
+  speed = numpy.mean(process_time_array)
 
 #______________________________________________________________________________
 def update_hist():
@@ -62,16 +84,8 @@ def update_hist():
     hist[0].Fill(x, y)
     hist[1].Fill(z, y)
     hist[2].Fill(x, z)
-    y = int(d[0][:4])
-    m = int(d[0][5:7])
-    day = int(d[0][8:10])
-    H = int(d[1][:2])
-    M = int(d[1][3:5])
-    S = int(d[1][6:8])
-    us = int(d[1][9:])
-    dt = datetime.datetime(y, m, day, H, M, S, us)
     step = int(d[2])
-    graph.SetPoint(ipoint, dt.timestamp(), step)
+    graph.SetPoint(ipoint, get_timestamp(d), step)
     ipoint += 1
   rems = (npoints - ipoint)*speed
   remd = int(rems/3600/24)
@@ -133,7 +147,7 @@ def main():
   xa.SetTimeOffset(0, 'jpn')
   graph.SetLineWidth(2)
   graph.SetPoint(0, 0, 0)
-  c1 = ROOT.TCanvas('c1', 'c1', 800, 800)
+  c1 = ROOT.TCanvas('c1', 'Mapping Progress Monitor', 800, 800)
   c1.Divide(2, 2)
   for i in range(3):
     c1.cd(i + 1).SetGrid()
