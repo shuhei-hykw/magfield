@@ -98,6 +98,11 @@ def update_hist():
   rem = f'{remd}d {remh}h {remm}m {rems}s'
   text1.SetText(0.2, 0.82, f'{step}/{npoints} = {step/npoints:.3f}')
   text2.SetText(0.2, 0.77, f'Rem = {rem}')
+  line = ROOT.TLine(graph.GetXaxis().GetXmin(), npoints,
+                    graph.GetXaxis().GetXmax(), npoints)
+  line.SetLineColor(ROOT.kRed + 1)
+  line.Draw()
+  graph.GetYaxis().SetRangeUser(0, npoints*1.04)
   for i in range(4):
     c1.cd(i + 1)
     ROOT.gPad.Modified()
