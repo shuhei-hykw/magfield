@@ -40,12 +40,15 @@ class RefProbeController():
     data = data.encode('utf-8').rstrip(self.__class__.EOS)
     data += self.__class__.EOS
     self.device.write(data)
-    ret = self.device.read_until(self.__class__.EOS)
-    data = b''
-    for d in ret:
-      data += (d & 0x7f).to_bytes(1, 'big')
-    decoded = data.decode()
-    return decoded
+    try:
+      ret = self.device.read_until(self.__class__.EOS)
+      data = b''
+      for d in ret:
+        data += (d & 0x7f).to_bytes(1, 'big')
+      decoded = data.decode()
+      return decoded
+    except serial.serialutil.SerialException:
+      return b''
 
   #____________________________________________________________________________
   def get_idn(self):
@@ -63,6 +66,7 @@ class RefProbeController():
       field = float(val)
     except (TypeError, ValueError):
       field = 0
+      utility.print_warning(f'HPC  failed to read ref. field')
     self.status = (field != 0)
     if not self.status:
       return

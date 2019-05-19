@@ -51,6 +51,9 @@ def update_data():
     mtime = os.stat(fname).st_mtime
     if mtime < 1557990000:
       continue
+    if ('20190520_061450' in fname or
+        '20190520_063540' in fname):
+      continue
     prev_time = None
     with open(fname) as f:
       for line in f:

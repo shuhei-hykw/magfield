@@ -631,8 +631,7 @@ class Controller(tkinter.Frame):
     device_list = mover_controller.MoverController.DEVICE_LIST
     if not self.free_daq_mode.get():
       return
-    if (self.daq_status == 'RUNNING' and
-        self.hallprobe.dev_status and self.ref.status):
+    if (self.daq_status == 'RUNNING' and self.ref.status):
       # for i in range(10):
       now = str(datetime.datetime.now())#[:19]
       utility.print_info(f'DAQ  save field : {self.free_daq_nevent}')
@@ -640,8 +639,7 @@ class Controller(tkinter.Frame):
       for key, val in device_list.items():
         buf += f'{self.mover_position_mon[key]:9.3f} '
       for key in hall_probe.HallProbeController.CHANNEL_LIST:
-        field = self.hallprobe.field_mean[key]
-        # field = self.hallprobe.field[key][0]
+        field = self.hallprobe.field[key][0]
         if 'mT' in self.hallprobe.field[key][1]:
           field *= 1e-3
         buf += f'{field:13.8f} '
@@ -713,7 +711,7 @@ class Controller(tkinter.Frame):
   #____________________________________________________________________________
   def update_hallprobe(self):
     if (not self.hallprobe.socket.is_open or
-        self.hallprobe.thread_state != 'RUNNING'):
+        not self.hallprobe.thread.is_alive):
       self.hpc_status = 'ERROR'
       return
     mag_txt = ''
@@ -894,7 +892,7 @@ class Controller(tkinter.Frame):
   #____________________________________________________________________________
   def update_ref(self):
     if (self.ref.device is None or
-        self.ref.thread_state != 'RUNNING'):
+        not self.ref.thread.is_alive):
       self.ref_status = 'ERROR'
       return
     else:
