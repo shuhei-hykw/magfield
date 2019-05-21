@@ -20,7 +20,7 @@ class RefProbeController():
       self.device = serial.Serial(device_name,
                                   parity=serial.PARITY_ODD,
                                   baudrate=57600,
-                                  timeout=0.5)
+                                  timeout=1.0)
       utility.print_info(f'HPC  open serial device {device_name}')
       self.thread_state = 'RUNNING'
     except serial.serialutil.SerialException:

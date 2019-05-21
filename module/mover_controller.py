@@ -3,6 +3,7 @@
 import binascii
 import math
 import serial
+import subprocess
 import threading
 import time
 
@@ -16,9 +17,10 @@ class MoverController():
   END_MAGIC = b'\x0d\x0a'
   # not for alarm but for moving status
   DEVIATION_LIST = {'x': None, 'y': None, 'z': None}
+  SOUND_FILE = 'module/under_transition.wav'
 
   #____________________________________________________________________________
-  def __init__(self, baudrate=115200, timeout=0.5):
+  def __init__(self, baudrate=115200, timeout=1.0):
     self.device_name = param_manager.get('mover_device')
     try:
       self.device = serial.Serial(self.device_name,
@@ -39,6 +41,7 @@ class MoverController():
       self.__class__.DEVIATION_LIST[i] = int(val)
     self.mover_position_mon = dict()
     self.mover_position_set = dict()
+    self.sound_file = self.__class__.SOUND_FILE
     self.thread_state = 'RUNNING'
     self.thread = threading.Thread(target=self.run_thread)
     self.thread.setDaemon(True)
@@ -53,14 +56,23 @@ class MoverController():
 
   #____________________________________________________________________________
   def __decode(self, line):
-    linebytes = binascii.hexlify(line)
-    response = linebytes[2:len(linebytes)-8] # except for start/end codes
-    device_id = response[0:2]
-    device_id = int(device_id, 16)
-    cmd_no = response[2:4]
-    cmd_no = int(cmd_no, 16)
-    data = response[4:len(response)] # byte
-    return device_id, cmd_no, data
+    try:
+      linebytes = binascii.hexlify(line)
+      response = linebytes[2:len(linebytes)-8] # except for start/end codes
+      device_id = response[0:2]
+      device_id = int(device_id, 16)
+      cmd_no = response[2:4]
+      cmd_no = int(cmd_no, 16)
+      data = response[4:len(response)] # byte
+      return device_id, cmd_no, data
+    except ValueError:
+      utility.print_error(f'MVC  commnication error')
+      if self.sound_file is None:
+        return
+      try:
+        subprocess.Popen(['aplay', '-q', self.sound_file])
+      except FileNotFoundError:
+        pass
 
   #____________________________________________________________________________
   def __get_bytes(self, device_id, cmd_no, data=None):

@@ -967,6 +967,8 @@ class Controller(tkinter.Frame):
           buf += f'{self.temp.temp[1]:6.1f}'
           self.output_file.write(buf + '\n')
           self.output_file.flush()
+        elif time.time() - self.last_step_time > 180:
+          utility.print_warning('STP  too long time to step?')
     else:
       self.config_normal(self.step_e)
 

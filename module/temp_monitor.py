@@ -32,7 +32,7 @@ class TempMonitor():
   def update(self):
     while True:
       try:
-        res = requests.get(self.url, timeout=1)
+        res = requests.get(self.url, timeout=1.0)
         break
       except (requests.exceptions.Timeout) as e:
         time.sleep(0.5)
@@ -43,7 +43,8 @@ class TempMonitor():
       if i == 4 or i == 5:
         val = 10 ** (2 * (val - 6.5))
       varray.append(val)
-    self.temp[0] = varray[8]
-    self.temp[1] = varray[9]
-    self.pres[0] = varray[4]
-    self.pres[1] = varray[5]
+    if len(varray) >= 10:
+      self.temp[0] = varray[8]
+      self.temp[1] = varray[9]
+      self.pres[0] = varray[4]
+      self.pres[1] = varray[5]

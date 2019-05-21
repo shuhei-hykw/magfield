@@ -10,7 +10,7 @@ class SocketBase():
   EOS = '\n'
 
   #____________________________________________________________________________
-  def __init__(self, host, port, timeout=0.5):
+  def __init__(self, host, port, timeout=1.0):
     self.host = host
     self.port = port
     self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
