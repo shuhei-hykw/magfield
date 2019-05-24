@@ -62,7 +62,7 @@ alarm_list = [(1, 'Over voltage of motor power',
                'An error of micon in the driver controller happened.'),
               (61, 'Regenerative circuit overload',
                'Regenerative circuit was overloaded.'),
-              (62, 'IPM modulde error',
+              (62, 'IPM module error',
                'An error of motor drive circuit happened.'),
               (63, 'Emergency stop',
                'Emergency stop is on.')]
