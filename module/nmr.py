@@ -45,7 +45,7 @@ class NMRController():
     if val == '0000000':
       self.hold = False
       now = time.time()
-      if 10 < now - self.prev:
+      if 30 < now - self.prev:
         utility.print_warning('NMR  signal is undetectable')
         self.prev = now
     else:

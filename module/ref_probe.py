@@ -39,8 +39,8 @@ class RefProbeController():
   def send(self, data):
     data = data.encode('utf-8').rstrip(self.__class__.EOS)
     data += self.__class__.EOS
-    self.device.write(data)
     try:
+      self.device.write(data)
       ret = self.device.read_until(self.__class__.EOS)
       data = b''
       for d in ret:
