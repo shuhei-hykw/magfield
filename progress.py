@@ -12,7 +12,11 @@ hist = []
 graph = None
 text1 = None
 text2 = None
-npoints = 123390
+#npoints = 123390
+#npoints = 131154
+#npoints = 442
+npoints = 1067
+#npoints = 556
 speed = 5.84
 
 #______________________________________________________________________________
@@ -44,15 +48,25 @@ def update_data():
   global data
   global speed
   process_time_array = []
-  for fname in sorted(os.listdir(data_dir)):
+  flist = sorted(os.listdir(data_dir))
+  for fname in flist:
     fname = os.path.join(data_dir, fname)
     if not os.path.isfile(fname):
       continue
     mtime = os.stat(fname).st_mtime
     if mtime < 1557990000:
       continue
-    if ('20190520_061450' in fname or
-        '20190520_063540' in fname):
+    # if ('20190520_061450' in fname or
+    #     '20190520_063540' in fname or
+    #     '20190527_060958' in fname or
+    #     '20190527_061237' in fname or
+    #     '20190529_074612' in fname or
+    #     '20190529_075358' in fname or
+    #     '20190530_02' in fname):
+    # if '20190531_183253' not in fname:
+    # if ('20190531_191821' not in fname and
+    #     '20190531_193258' not in fname):
+    if flist[-3] not in fname:
       continue
     prev_time = None
     with open(fname) as f:
@@ -68,6 +82,7 @@ def update_data():
           process_time_array.append(process_time)
         prev_time = curr_time
   speed = numpy.mean(process_time_array)
+  print(f'average speed = {speed}')
 
 #______________________________________________________________________________
 def update_hist():
@@ -93,14 +108,18 @@ def update_hist():
     graph.SetPoint(ipoint, get_timestamp(d), step)
     ipoint += 1
   step = curr_step
-  rems = (npoints - ipoint)*speed
-  remd = int(rems/3600/24)
-  remh = int((rems - remd*24*3600)/3600)
-  remm = int((rems - remd*24*3600 - remh*3600)/60)
-  rems = int(rems - remd*24*3600 - remh*3600 - remm*60)
-  rem = f'{remd}d {remh}h {remm}m {rems}s'
-  text1.SetText(0.2, 0.82, f'{step}/{npoints} = {step/npoints:.3f}')
-  text2.SetText(0.2, 0.77, f'Rem = {rem}')
+  try:
+    rems = (npoints - step)*speed
+  #  rems = (npoints - curr_step)*speed
+    remd = int(rems/3600/24)
+    remh = int((rems - remd*24*3600)/3600)
+    remm = int((rems - remd*24*3600 - remh*3600)/60)
+    rems = int(rems - remd*24*3600 - remh*3600 - remm*60)
+    rem = f'{remd}d {remh}h {remm}m {rems}s'
+    text1.SetText(0.2, 0.82, f'{step}/{npoints} = {step/npoints:.3f}')
+    text2.SetText(0.2, 0.77, f'Rem = {rem}')
+  except ValueError:
+    pass
   line = ROOT.TLine(graph.GetXaxis().GetXmin(), npoints,
                     graph.GetXaxis().GetXmax(), npoints)
   line.SetLineColor(ROOT.kRed + 1)
