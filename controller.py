@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-USE_NMR = False
+USE_REF = True
+USE_NMR = True
 
 import argparse
 import datetime
@@ -16,10 +17,10 @@ from tkinter.scrolledtext import ScrolledText
 
 from module import alarm_list
 from module import hall_probe
+if USE_REF:
+  from module import ref_probe
 if USE_NMR:
   from module import nmr
-else:
-  from module import ref_probe
 from module import mover_controller
 from module import param_manager
 from module import progress
@@ -38,10 +39,10 @@ class Controller(tkinter.Frame):
     self.daq_status = 'IDLE'
     self.step_status = 'IDLE'
     self.hpc_status = 'IDLE'
+    if USE_REF:
+      self.ref_status = 'IDLE'
     if USE_NMR:
       self.nmr_status = 'IDLE'
-    else:
-      self.ref_status = 'IDLE'
     self.alarm_list = alarm_list.AlarmListWindow()
     self.progress = progress.ProgressWindow()
     tkinter.Frame.__init__(self)
@@ -62,13 +63,14 @@ class Controller(tkinter.Frame):
     self.mover_position_mon = {'x': 0., 'y': 0., 'z': 0.}
     self.mover_position_set = {'x': 0., 'y': 0., 'z': 0.}
     self.last_move = time.time()
+    self.last_free_daq_time = 0
     if self.mover.device is None:
       utility.print_error(f'MVC  failed to open: {self.mover.device_name}')
     self.hallprobe = hall_probe.HallProbeController()
+    if USE_REF:
+      self.ref = ref_probe.RefProbeController()
     if USE_NMR:
       self.nmr = nmr.NMRController()
-    else:
-      self.ref = ref_probe.RefProbeController()
     self.temp = temp_monitor.TempMonitor()
     self.master.title(f'Field Mapping Controller (pid={os.getpid()})')
     self.master.resizable(0, 1)
@@ -281,21 +283,21 @@ class Controller(tkinter.Frame):
       mag_txt += f'B{key} {"-"*10:10} [T]\n'
     self.lfield = tkinter.Label(fstatus, text=mag_txt, font=font)
     self.lfield.pack(side=tkinter.TOP)
-    font = ('Helvetica', -16, 'bold')
-    if USE_NMR:
-      self.lnmr_title = tkinter.Label(fstatus, text='NMR', font=font)
-      self.lnmr_title.pack(side=tkinter.TOP, padx=5, pady=5)
-    else:
+    if USE_REF:
+      font = ('Helvetica', -16, 'bold')
       self.lref_title = tkinter.Label(fstatus, text='Reference Probe',
                                       font=font)
       self.lref_title.pack(side=tkinter.TOP, padx=5, pady=5)
-    font = ('Courier', -14, 'bold')
-    if USE_NMR:
-      self.lnmr = tkinter.Label(fstatus, text='--------- [T]', font=font)
-      self.lnmr.pack(side=tkinter.TOP, padx=5)
-    else:
+      font = ('Courier', -14, 'bold')
       self.lref = tkinter.Label(fstatus, text='--------- [T]', font=font)
-      self.lref.pack(side=tkinter.TOP, padx=5)
+      self.lref.pack(side=tkinter.TOP, padx=5, pady=5)
+    if USE_NMR:
+      font = ('Helvetica', -16, 'bold')
+      self.lnmr_title = tkinter.Label(fstatus, text='NMR', font=font)
+      self.lnmr_title.pack(side=tkinter.TOP, padx=5, pady=5)
+      font = ('Courier', -14, 'bold')
+      self.lnmr = tkinter.Label(fstatus, text='--------- [T]', font=font)
+      self.lnmr.pack(side=tkinter.TOP, padx=5, pady=5)
     flog = tkinter.Frame(self)
     flog.pack(side=tkinter.LEFT, padx=5, pady=5,
               expand=True, fill=tkinter.BOTH)
@@ -588,14 +590,19 @@ class Controller(tkinter.Frame):
                            f'{param_manager.get("step_file")}\n# speed = ' +
                            f'{self.get_speed()}\n#\n' +
                            f'# date time step x y z Bx By Bz ' +
-                           ('NMR' if USE_NMR else 'REF') +
-                           ' Temp1 Temp2\n\n')
+                           ('REF ' if USE_REF else '') +
+                           ('NMR ' if USE_NMR else '') +
+                           'Temp1 Temp2\n\n')
 
 
   #____________________________________________________________________________
   def stop(self):
     if self.daq_status == 'RUNNING':
       utility.print_info('DAQ  stop')
+      try:
+        subprocess.Popen(['aplay', '-q', self.sound_file])
+      except FileNotFoundError:
+        pass
       self.output_file.close()
       self.daq_status = 'IDLE'
       self.set_manual_inching(force=True)
@@ -616,10 +623,10 @@ class Controller(tkinter.Frame):
     utility.set_error(self.print_error.get() == 1)
     self.update_mover()
     self.update_hallprobe()
+    if USE_REF:
+      self.update_ref()
     if USE_NMR:
       self.update_nmr()
-    else:
-      self.update_ref()
     self.update_label()
     self.check_under_transition()
     self.update_step()
@@ -631,7 +638,8 @@ class Controller(tkinter.Frame):
     device_list = mover_controller.MoverController.DEVICE_LIST
     if not self.free_daq_mode.get():
       return
-    if (self.daq_status == 'RUNNING' and self.ref.status):
+    if (self.daq_status == 'RUNNING' and self.ref.status and
+        time.time() - self.last_free_daq_time > 30.0):
       # for i in range(10):
       now = str(datetime.datetime.now())#[:19]
       utility.print_info(f'DAQ  save field : {self.free_daq_nevent}')
@@ -643,16 +651,18 @@ class Controller(tkinter.Frame):
         if 'mT' in self.hallprobe.field[key][1]:
           field *= 1e-3
         buf += f'{field:13.8f} '
-      if USE_NMR:
-        buf += f'{self.nmr.field:10.5f}'
-      else:
+      if USE_REF:
         buf += f'{self.ref.field:10.7f}'
+      if USE_NMR:
+        buf += f'{self.nmr.field:10.7f}'
       # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
       buf += f'{self.temp.temp[0]:6.1f}'
       buf += f'{self.temp.temp[1]:6.1f}'
       self.output_file.write(buf + '\n')
       self.output_file.flush()
       self.free_daq_nevent += 1
+      self.last_free_daq_time = time.time()
+
 
   #____________________________________________________________________________
   def update_label(self):
@@ -884,7 +894,7 @@ class Controller(tkinter.Frame):
       self.nmr_status = 'ERROR'
       return
     if self.nmr.hold:
-      mag_txt = f'{self.nmr.field:8.6f} [T]'
+      mag_txt = f'{self.nmr.field:10.7f} [T]'
     else:
       mag_txt = 'UNDETECTABLE [T]'
     self.lnmr.config(text=mag_txt)
@@ -958,10 +968,10 @@ class Controller(tkinter.Frame):
             if 'mT' in self.hallprobe.field[key][1]:
               field *= 1e-3
             buf += f'{field:13.8f} '
-          if USE_NMR:
-            buf += f'{self.nmr.field:10.5f}'
-          else:
+          if USE_REF:
             buf += f'{self.ref.field:10.7f}'
+          if USE_NMR:
+            buf += f'{self.nmr.field:10.7f}'
           # utility.print_info(f'STP  step#{step_manager.step_number} {buf}')
           buf += f'{self.temp.temp[0]:6.1f}'
           buf += f'{self.temp.temp[1]:6.1f}'

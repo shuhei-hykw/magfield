@@ -4,6 +4,7 @@
 # key val comment ...
 
 data_path	data
+output_pdf	analyzer/fieldmap_analyzer.pdf
 
 # Mover
 mover_device	/dev/ttyUSB0
@@ -15,15 +16,9 @@ center_y	-215.7
 #center_z	-213.3 center of mover range
 center_z	-212.1 beam height
 #step_file	param/test_step_z-20.txt
-#step_file	param/r270_z47-290.txt
-#step_file	param/test_step.txt
-#step_file	param/r270_z47-290_add_z.txt
-#step_file	param/center_line_step.txt
-#step_file	param/sparse_step.txt
-step_file	param/sparse_step_reversed.txt
+step_file	param/r270_z47-290.txt
 position_dev	5	allowable position deviation [um]
 xy_limit_r	275
-#xy_limit_r	255
 
 # Hall probe (LSCI,Model460)
 gpib_server_host	192.168.30.3
