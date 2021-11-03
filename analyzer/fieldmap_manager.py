@@ -6,8 +6,14 @@ import os
 import threading
 import ROOT
 
+import calculation_map
 import param_manager
 import utility
+
+use_nmr = False #True
+
+#cparam = [-0.714519, -7.07747e-05, 4.4945e-06]
+cparam = [-0.716589, 3.19393e-05, 3.51301e-06]
 
 #______________________________________________________________________________
 def magnet_coordinate(x, y, z):
@@ -48,13 +54,19 @@ class FieldElement():
       self.temp1 = 0
       self.temp2 = 0
       self.bscale = 1
+    self.cbref = (self.bref - cparam[2] * (self.temp2**2)
+                  - cparam[1] * self.temp2
+                  - cparam[0] + (-0.7128349397590434))
+    # self.bscale = abs(self.cbref/self.bref)
     self.bscale = 1
     self.p = magnet_coordinate(float(data[3]),
-                                 float(data[4]),
-                                 float(data[5]))
+                               float(data[4]),
+                               float(data[5]))
     self.b = magnet_field(float(data[6]) * self.bscale,
                           float(data[7]) * self.bscale,
                           float(data[8]) * self.bscale)
+    # self.calc = calculation_map.CalcMap().get_field([self.p[0], self.p[1], self.p[2]])
+    # print(self.calc)
 
 #______________________________________________________________________________
 class FieldMapManager():
@@ -77,6 +89,8 @@ class FieldMapManager():
       mtime = os.stat(fname).st_mtime
       if not os.path.isfile(fname):
         continue
+      if mtime < 1558083682:
+        continue
       # if ('20190520_061450' in fname or
       #     '20190520_063540' in fname or
       #     '20190527_060958' in fname or
@@ -89,19 +103,39 @@ class FieldMapManager():
       #     '20190601_020337' not in fname):
       # if ('20190603_112806' not in fname and
       #     '20190603_121624' not in fname):
-      if '20190603_200628' not in fname:
+      ''' main data '''
+      if not use_nmr and ('201906' in fname or
+                          '20190520_061450' in fname or
+                          '20190520_063540' in fname or
+                          '20190522_071913' in fname or
+                          '20190527_060958' in fname or
+                          '20190527_061237' in fname or
+                          '20190530_021341' in fname or
+                          '20190531_054932' in fname or
+                          '20190531_054932' in fname or
+                          '20190531_06' in fname or
+                          '20190531_1' in fname or
+                          '20190531_2' in fname or
+                          False):
         continue
-      if mtime < 1557990000:
+      if (use_nmr
+          and '20190603_112806' not in fname
+          and '20190603_121624' not in fname):
         continue
       prev_time = None
       with open(fname) as f:
         utility.print_info(f'FLD  read {fname}')
         for iline, line in enumerate(f):
           columns = line.split()
-          if '#' in line or len(columns) < 14:
-            continue
+          if use_nmr:
+            if '#' in line or len(columns) < 14:
+              continue
+          else:
+            if '#' in line or len(columns) < 13:
+              continue
           ix = int(numpy.round(float(columns[3]) - center_x) / 10 + 26)
-          ix = len(self.field_map)
+          if use_nmr:
+            ix = len(self.field_map)
           iy = int(numpy.round(float(columns[4]) - center_y) / 10 + 26)
           iz = int(numpy.round(float(columns[5]) - center_z) / 10 + 28)
           # if abs(float(columns[10])) < 0.5:
@@ -145,8 +179,8 @@ class FieldMapManager():
       if bup is not None and bdw is not None:
         div += (bup[i] - bdw[i])/20
       elif bup is None and bdw is None:
-        # utility.print_warning('FLD  this element is alone : ' +
-        #                       f'{i} {key} {self.field_map[key].p.Mag():.2f}')
+        utility.print_warning('FLD  this element is alone : ' +
+                              f'{i} {key} {self.field_map[key].p.Mag():.2f}')
         div += 0.
       elif bup is None:
         div += (b[i] - bdw[i])/10
@@ -211,7 +245,7 @@ class FieldMapManager():
       elm.rotBx = 0
       elm.rotBy = 0
       elm.rotBz = 0
-      continue
+      # continue
       elm.divB = self.__divB(key)
       rotB = self.__rotB(key)
       elm.rotBx = rotB[0]

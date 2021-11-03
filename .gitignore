@@ -1,6 +1,10 @@
+.DS_Store
 *.[ado]
 *.pyc
 *~
 *.swp
+*.pdf
+*.ps
+*.root
 data
 tmpdata

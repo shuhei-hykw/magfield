@@ -82,42 +82,27 @@ def analyze():
   # range_by = [1600, -1.006, -0.990]
   range_bz = [200, -0.2, 0.2]
   add_hist('Ref. Field % NMR', [range_nmr, range_ref])
-  add_hist('CRef. Field % NMR', [range_nmr, range_ref])
   add_hist('Ref. Field % Temp. Coil', [range_temp, range_ref])
-  add_hist('CRef. Field % Temp. Coil', [range_temp, range_ref])
   add_hist('Ref. Field % Temp. Room', [range_temp, range_ref])
-  add_hist('CRef. Field % Temp. Room', [range_temp, range_ref])
   add_hist('Ref. Field % B_{y}', [range_by, range_ref])
-  add_hist('CRef. Field % B_{y}', [range_by, range_ref])
   add_hist('NMR % Temp. Coil', [range_temp, range_nmr])
   add_hist('NMR % Temp. Room', [range_temp, range_nmr])
   add_hist('B_{x} % NMR', [range_nmr, range_bx])
-  add_hist('CB_{x} % NMR', [range_nmr, range_bx])
   add_hist('B_{y} % NMR', [range_nmr, range_by])
-  add_hist('CB_{y} % NMR', [range_nmr, range_by])
   add_hist('B_{z} % NMR', [range_nmr, range_bz])
-  add_hist('CB_{z} % NMR', [range_nmr, range_bz])
   add_hist('B_{x} % Temp. Coil', [range_temp, range_bx])
-  add_hist('CB_{x} % Temp. Coil', [range_temp, range_bx])
   add_hist('B_{y} % Temp. Coil', [range_temp, range_by])
-  add_hist('CB_{y} % Temp. Coil', [range_temp, range_by])
   add_hist('B_{z} % Temp. Coil', [range_temp, range_bz])
-  add_hist('CB_{z} % Temp. Coil', [range_temp, range_bz])
   add_hist('B_{x} % Temp. Room', [range_temp, range_bx])
-  add_hist('CB_{x} % Temp. Room', [range_temp, range_bx])
   add_hist('B_{y} % Temp. Room', [range_temp, range_by])
-  add_hist('CB_{y} % Temp. Room', [range_temp, range_by])
   add_hist('B_{z} % Temp. Room', [range_temp, range_bz])
-  add_hist('CB_{z} % Temp. Room', [range_temp, range_bz])
   # harray.append(ROOT.TH1F('h_ref_field', 'Ref. Field',
   #                         50, -0.71505, -0.71005)) # 2
-  # harray.append(ROOT.TH1F('h_ref_cfield', 'Ref. CField',
-  #                         50*2, -0.71505, -0.71005)) # 3
   # harray.append(ROOT.TH1F('h_bx', 'Bx', 200, -0.2, 0.2)) # 4
   # harray.append(ROOT.TH1F('h_by', 'By', 200, -1.2, -0.8)) # 5
   # harray.append(ROOT.TH1F('h_bz', 'Bz', 200, -0.2, 0.2)) # 6
   # harray.append(ROOT.TH1F('h_bv', 'Bv', 200, 0.8, 1.2)) # 7
-  maxwell_range = [160, -0.008, 0.008]
+  maxwell_range = [200, -0.01, 0.01]
   add_hist('divB', [maxwell_range])
   add_hist('(rotB)_{x}', [maxwell_range])
   add_hist('(rotB)_{y}', [maxwell_range])
@@ -228,11 +213,20 @@ def analyze():
     if '% Temp' in key:
       xa.SetTitle('[#circC]')
       ya.SetTitle('[T]')
+    elif 'divB' in key or 'rotB' in key:
+      xa.SetTitle('[T/mm]')
+    elif '[Z%X]' in key:
+      xa.SetTitle('x [mm]')
+      ya.SetTitle('z [mm]')
+    elif '[Y%Z]' in key:
+      xa.SetTitle('z [mm]')
+      ya.SetTitle('y [mm]')
+    elif '[Z%X]' in key:
+      xa.SetTitle('x [mm]')
+      ya.SetTitle('z [mm]')
     elif '%' in key:
       xa.SetTitle('[T]')
       ya.SetTitle('[T]')
-    elif 'divB' in key or 'rotB' in key:
-      xa.SetTitle('[T/mm]')
     elif 'B' in key:
       xa.SetTitle('[T]')
   for key, g in garray.items():
@@ -320,49 +314,21 @@ def analyze():
     if len(elm.data) >= 13:
       if cut_for_nmr and elm.bref > -0.71245:
         continue
-      # cnmr = (elm.nmr - f1.GetParameter(2) * (elm.temp2**2)
-      #          - f1.GetParameter(1) * elm.temp2
-      #          - f1.GetParameter(0) + nmr_mean)
-      cbref = (elm.bref - f1.GetParameter(2) * (elm.temp2**2)
-               - f1.GetParameter(1) * elm.temp2
-               - f1.GetParameter(0) + bref_mean)
-      cbref = elm.cbref
-      # cbref = (elm.bref - f2.GetParameter(2) * (cnmr**2)
-      #          - f2.GetParameter(1) * cnmr
-      #          - f2.GetParameter(0) + bref_mean)
-
-      # print(cbref)
-      # garray[1].SetPoint(ipoint, elm.unix_time, cbref)
-      # garray[4].SetPoint(ipoint, elm.step, elm.bref)
-      # #garray[5].SetPoint(ipoint, elm.step, -0.7160 + 0.0001*elm.temp2)
-      # garray[5].SetPoint(ipoint, elm.step, cbref)
       garray['NMR'].SetPoint(ipoint, elm.unix_time, elm.nmr)
       garray['Hall Probe B_{x}'].SetPoint(ipoint, elm.unix_time, elm.b.X())
       garray['Hall Probe B_{y}'].SetPoint(ipoint, elm.unix_time, elm.b.Y())
       garray['Hall Probe B_{z}'].SetPoint(ipoint, elm.unix_time, elm.b.Z())
-      harray['CRef. Field % NMR'].Fill(elm.nmr, cbref)
-      harray['CRef. Field % B_{y}'].Fill(elm.b.Y(), cbref)
-      harray['CRef. Field % Temp. Coil'].Fill(elm.temp1, cbref)
-      harray['CRef. Field % Temp. Room'].Fill(elm.temp2, cbref)
-      # cb = ROOT.TVector3((elm.b.X() - f2.GetParameter(1) * cbref - f2.GetParameter(0)),
-      #                    (elm.b.Y() - f2.GetParameter(1) * cbref - f2.GetParameter(0))-1.0045,
-      #                    (elm.b.Z() - f2.GetParameter(1) * cbref - f2.GetParameter(0)))
-      cb = elm.b * cbref * (1 / elm.bref)
-      harray['CB_{x} % NMR'].Fill(elm.nmr, cb.X())
-      harray['CB_{y} % NMR'].Fill(elm.nmr, cb.Y())
-      harray['CB_{z} % NMR'].Fill(elm.nmr, cb.Z())
-      harray['CB_{x} % Temp. Coil'].Fill(elm.temp1, cb.X())
-      harray['CB_{x} % Temp. Room'].Fill(elm.temp2, cb.X())
-      harray['CB_{y} % Temp. Coil'].Fill(elm.temp1, cb.Y())
-      harray['CB_{y} % Temp. Room'].Fill(elm.temp2, cb.Y())
-      harray['CB_{z} % Temp. Coil'].Fill(elm.temp1, cb.Z())
-      harray['CB_{z} % Temp. Room'].Fill(elm.temp2, cb.Z())
       harray['B_X [Y%X]'].Fill(elm.p.X(), elm.p.Y(), elm.b.X())
       harray['B_X [Y%Z]'].Fill(elm.p.Z(), elm.p.Y(), elm.b.X())
       harray['B_X [Z%X]'].Fill(elm.p.X(), elm.p.Z(), elm.b.X())
-      harray['B_Y [Y%X]'].Fill(elm.p.X(), elm.p.Y(), elm.b.Y())
-      harray['B_Y [Y%Z]'].Fill(elm.p.Z(), elm.p.Y(), elm.b.Y())
-      harray['B_Y [Z%X]'].Fill(elm.p.X(), elm.p.Z(), elm.b.Y())
+
+      if abs(elm.p.Z()) < 0.1:
+        harray['B_Y [Y%X]'].Fill(elm.p.X(), elm.p.Y(), elm.b.Y())
+      if abs(elm.p.X()) < 0.1:
+        harray['B_Y [Y%Z]'].Fill(elm.p.Z(), elm.p.Y(), elm.b.Y())
+      if abs(elm.p.Y()) < 0.1:
+        harray['B_Y [Z%X]'].Fill(elm.p.X(), elm.p.Z(), elm.b.Y())
+
       harray['B_Z [Y%X]'].Fill(elm.p.X(), elm.p.Y(), elm.b.Z())
       harray['B_Z [Y%Z]'].Fill(elm.p.Z(), elm.p.Y(), elm.b.Z())
       harray['B_Z [Z%X]'].Fill(elm.p.X(), elm.p.Z(), elm.b.Z())
@@ -372,7 +338,6 @@ def analyze():
       harray['Res B_{x}'].Fill(res[0])
       harray['Res B_{y}'].Fill(res[1])
       harray['Res B_{z}'].Fill(res[2])
-      # harray['Res B'].Fill(numpy.linalg.norm(bcalc)/numpy.linalg.norm(cb)*0.01)
       harray['Res B'].Fill(numpy.linalg.norm(res))
       harray['Res/Calc B_{x}'].Fill(res[0]/bcalc[0])
       harray['Res/Calc B_{y}'].Fill(res[1]/bcalc[1])
@@ -448,212 +413,277 @@ def analyze():
       #   utility.print_info(f'{elm.b.Z()}')
   ''' Draw '''
   pdf_name = param_man.get('output_pdf')
-  pdf_dir = os.path.dirname(pdf_name)
-  ROOT.gPad.Print(pdf_name + '[')
-  key = 'raw_trend_1'
-  carray[key].Divide(2, 2)
-  for i in range(7):
-    carray[key].cd(i + 1).SetGrid()
-    if i == 0: garray['Ref. Field'].Draw('AL')
-    if i == 1: garray['NMR'].Draw('AL')
-    if i == 2: garray['Temp. Coil'].Draw('AL')
-    if i == 3: garray['Temp. Room'].Draw('AL')
-    ROOT.gPad.Modified()
-    ROOT.gPad.Update()
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  key = 'raw_trend_2'
-  carray[key].Divide(2, 2)
-  for i in range(7):
-    carray[key].cd(i + 1).SetGrid()
-    if i == 0: garray['Hall Probe B_{x}'].Draw('AL')
-    if i == 1: garray['Hall Probe B_{y}'].Draw('AL')
-    if i == 2: garray['Hall Probe B_{z}'].Draw('AL')
-    ROOT.gPad.Modified()
-    ROOT.gPad.Update()
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  key = 'temp_corr_1'
-  carray[key].Divide(2, 3)
-  carray[key].cd(1).SetGrid()
-  harray['Ref. Field % NMR'].Draw('colz')
-  carray[key].cd(2).SetGrid()
-  harray['CRef. Field % NMR'].Draw('colz')
-  carray[key].cd(3).SetGrid()
-  harray['Ref. Field % B_{y}'].Draw('colz')
-  carray[key].cd(4).SetGrid()
-  harray['CRef. Field % B_{y}'].Draw('colz')
+  # pdf_dir = os.path.dirname(pdf_name)
+  # ROOT.gPad.Print(pdf_name + '[')
+  # key = 'raw_trend_1'
+  # carray[key].Divide(2, 2)
+  # for i in range(7):
+  #   carray[key].cd(i + 1).SetGrid()
+  #   if i == 0: garray['Ref. Field'].Draw('AL')
+  #   if i == 1: garray['NMR'].Draw('AL')
+  #   if i == 2: garray['Temp. Coil'].Draw('AL')
+  #   if i == 3: garray['Temp. Room'].Draw('AL')
+  #   ROOT.gPad.Modified()
+  #   ROOT.gPad.Update()
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # key = 'raw_trend_2'
+  # carray[key].Divide(2, 2)
+  # for i in range(7):
+  #   carray[key].cd(i + 1).SetGrid()
+  #   if i == 0: garray['Hall Probe B_{x}'].Draw('AL')
+  #   if i == 1: garray['Hall Probe B_{y}'].Draw('AL')
+  #   if i == 2: garray['Hall Probe B_{z}'].Draw('AL')
+  #   ROOT.gPad.Modified()
+  #   ROOT.gPad.Update()
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # key = 'temp_corr_1'
+  # carray[key].Divide(2, 3)
+  # carray[key].cd(1).SetGrid()
+  # harray['Ref. Field % NMR'].Draw('colz')
+  # carray[key].cd(2).SetGrid()
+
+  # carray[key].cd(3).SetGrid()
+  # harray['Ref. Field % B_{y}'].Draw('colz')
+  # carray[key].cd(4).SetGrid()
+
+  # # carray[key].cd(5).SetGrid()
+  # # harray['Ref. Field % Temp. Coil'].Draw('colz')
+  # # carray[key].cd(6).SetGrid()
+  # # harray['CRef. Field % Temp. Coil'].Draw('colz')
   # carray[key].cd(5).SetGrid()
-  # harray['Ref. Field % Temp. Coil'].Draw('colz')
+  # harray['Ref. Field % Temp. Room'].Draw('colz')
   # carray[key].cd(6).SetGrid()
-  # harray['CRef. Field % Temp. Coil'].Draw('colz')
-  carray[key].cd(5).SetGrid()
-  harray['Ref. Field % Temp. Room'].Draw('colz')
-  carray[key].cd(6).SetGrid()
-  harray['CRef. Field % Temp. Room'].Draw('colz')
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  key = 'temp_corr_2'
-  carray[key].Divide(1, 2)
-  carray[key].cd(1).SetGrid()
-  harray['NMR % Temp. Coil'].Draw('colz')
-  carray[key].cd(2).SetGrid()
-  harray['NMR % Temp. Room'].Draw('colz')
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  key = 'temp_corr_3'
-  carray[key].Divide(2, 3)
-  carray[key].cd(1).SetGrid()
-  harray['B_{y} % NMR'].Draw('colz')
-  carray[key].cd(2).SetGrid()
-  harray['CB_{y} % NMR'].Draw('colz')
-  carray[key].cd(3).SetGrid()
-  harray['B_{y} % Temp. Coil'].Draw('colz')
-  carray[key].cd(4).SetGrid()
-  harray['CB_{y} % Temp. Coil'].Draw('colz')
-  carray[key].cd(5).SetGrid()
-  harray['B_{y} % Temp. Room'].Draw('colz')
-  carray[key].cd(6).SetGrid()
-  harray['CB_{y} % Temp. Room'].Draw('colz')
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  key = 'temp_corr_4'
-  carray[key].Divide(2, 3)
-  carray[key].cd(1).SetGrid()
-  harray['B_{x} % NMR'].Draw('colz')
-  carray[key].cd(2).SetGrid()
-  harray['CB_{x} % NMR'].Draw('colz')
-  carray[key].cd(3).SetGrid()
-  harray['B_{x} % Temp. Coil'].Draw('colz')
-  carray[key].cd(4).SetGrid()
-  harray['CB_{x} % Temp. Coil'].Draw('colz')
-  carray[key].cd(5).SetGrid()
-  harray['B_{x} % Temp. Room'].Draw('colz')
-  carray[key].cd(6).SetGrid()
-  harray['CB_{x} % Temp. Room'].Draw('colz')
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  key = 'maxwell'
-  carray[key].Divide(2, 2)
-  carray[key].cd(1).SetGrid()
+
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # key = 'temp_corr_2'
+  # carray[key].Divide(1, 2)
+  # carray[key].cd(1).SetGrid()
+  # harray['NMR % Temp. Coil'].Draw('colz')
+  # carray[key].cd(2).SetGrid()
+  # harray['NMR % Temp. Room'].Draw('colz')
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # key = 'temp_corr_3'
+  # carray[key].Divide(2, 3)
+  # carray[key].cd(1).SetGrid()
+  # harray['B_{y} % NMR'].Draw('colz')
+  # carray[key].cd(2).SetGrid()
+
+  # carray[key].cd(3).SetGrid()
+  # harray['B_{y} % Temp. Coil'].Draw('colz')
+  # carray[key].cd(4).SetGrid()
+
+  # carray[key].cd(5).SetGrid()
+  # harray['B_{y} % Temp. Room'].Draw('colz')
+  # carray[key].cd(6).SetGrid()
+
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # key = 'temp_corr_4'
+  # carray[key].Divide(2, 3)
+  # carray[key].cd(1).SetGrid()
+  # harray['B_{x} % NMR'].Draw('colz')
+  # carray[key].cd(2).SetGrid()
+
+  # carray[key].cd(3).SetGrid()
+  # harray['B_{x} % Temp. Coil'].Draw('colz')
+  # carray[key].cd(4).SetGrid()
+
+  # carray[key].cd(5).SetGrid()
+  # harray['B_{x} % Temp. Room'].Draw('colz')
+  # carray[key].cd(6).SetGrid()
+
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # key = 'maxwell'
+  # carray[key].Divide(2, 2)
+  # carray[key].cd(1).SetGrid()
+  # harray['divB'].Draw('colz')
+  # carray[key].cd(2).SetGrid()
+  # harray['(rotB)_{x}'].Draw('colz')
+  # carray[key].cd(3).SetGrid()
+  # harray['(rotB)_{y}'].Draw('colz')
+  # carray[key].cd(4).SetGrid()
+  # harray['(rotB)_{z}'].Draw('colz')
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # for i, t in enumerate(['X', 'Y', 'Z']):
+  #   key = f'B_Field_{t}'
+  #   carray[key].Divide(2, 2)
+  #   carray[key].cd(1).SetGrid()
+  #   harray[f'B_{t} [Y%X]'].Draw('colz')
+  #   carray[key].cd(2).SetGrid()
+  #   harray[f'B_{t} [Y%Z]'].Draw('colz')
+  #   carray[key].cd(3).SetGrid()
+  #   harray[f'B_{t} [Z%X]'].Draw('colz')
+  #   carray[key].Print(pdf_name)
+  #   carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # key = 'Residual'
+  # carray[key].Divide(2, 2)
+  # carray[key].cd(1).SetGrid()
+  # harray['Res B_{x}'].Draw('colz')
+  # carray[key].cd(2).SetGrid()
+  # harray['Res B_{y}'].Draw('colz')
+  # carray[key].cd(3).SetGrid()
+  # harray['Res B_{z}'].Draw('colz')
+  # # carray[key].cd(4).SetGrid()
+  # # harray['Res B'].Draw('colz')
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # key = 'ResidualRatio'
+  # carray[key].Divide(2, 2)
+  # carray[key].cd(1).SetGrid()
+  # harray['Res/Calc B_{x}'].Draw('colz')
+  # carray[key].cd(2).SetGrid()
+  # harray['Res/Calc B_{y}'].Draw('colz')
+  # carray[key].cd(3).SetGrid()
+  # harray['Res/Calc B_{z}'].Draw('colz')
+  # # carray[key].cd(4).SetGrid()
+  # # harray['Res. B'].Draw('colz')
+  # carray[key].Print(pdf_name)
+  # carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
+  # # for i in range(3):
+  # #   carray[15].cd(2*i + 1).SetGrid()
+  # #   garray[i + 6].Draw('AL')
+  # #   garray[i + 9].Draw('L')
+  # #   ROOT.gPad.Modified()
+  # #   ROOT.gPad.Update()
+  # #   carray[15].cd(2*i + 2).SetGrid()
+  # #   garray[i + 12].Draw('AL')
+  # #   ROOT.gPad.Modified()
+  # #   ROOT.gPad.Update()
+  # # carray[15].Print(pdf_name)
+  # # for j in range(2):
+  # #   carray[j + 14].Divide(2, 2)
+  # #   for i in range(4):
+  # #     carray[j + 14].cd(i + 1).SetGrid()
+  # #     harray[j if i == 3 else i + 44 + j*3].Draw('colz')
+  # #     ROOT.gPad.Modified()
+  # #     ROOT.gPad.Update()
+  # #   carray[j + 14].Print(pdf_name)
+  # # #carray[2].Divide(1, 2)
+  # # carray[2].cd(0).SetGrid()
+  # # # ymax = max(harray[2].GetMaximum(), harray[3].GetMaximum())
+  # # # harray[2].SetMaximum(ymax * 1.05)
+  # # harray[3].Draw()
+  # # harray[2].Draw('same')
+  # # for i in range(2):
+  # #   stddev = harray[i + 2].GetStdDev()
+  # #   mean = harray[i + 2].GetMean()
+  # #   if mean != 0:
+  # #     utility.print_info(f'ANA  ref field stddev = {stddev:.3e} ' +
+  # #                        f'({abs(stddev/mean)*100:.4f}%)')
+  # # # harray[3].Fit('gaus', '', '')
+  # # carray[2].Print(pdf_name)
+  # # carray[3].Divide(2, 2)
+  # # for i in range(4):
+  # #   carray[3].cd(i + 1).SetGrid()
+  # #   harray[i + 4].Draw()
+  # # carray[3].Print(pdf_name)
+  # # carray[4].Divide(2, 2)
+  # # for i in range(4):
+  # #   carray[4].cd(i + 1).SetGrid()
+  # #   # ROOT.gPad.SetLogy()
+  # #   harray[i + 8].Draw()
+  # #   # harray[i + 8].Fit('gaus')
+  # #   text = ROOT.TText()
+  # # carray[4].Print(pdf_name)
+  # # carray[8].Divide(2, 2)
+  # # for i in range(4):
+  # #   carray[8].cd(i + 1).SetGrid()
+  # #   harray[i + 24].Draw('colz')
+  # # carray[8].Print(pdf_name)
+  # # carray[9].Divide(2, 2)
+  # # for i in range(4):
+  # #   carray[9].cd(i + 1).SetGrid()
+  # #   harray[i + 28].Draw('colz')
+  # # carray[9].Print(pdf_name)
+  # # for j in range(3):
+  # #   carray[10 + j].Divide(2, 2)
+  # #   for i in range(4):
+  # #     carray[10 + j].cd(i + 1).SetGrid()
+  # #     harray[i + 32 + j * 4].Draw('colz')
+  # #   carray[10 + j].Print(pdf_name)
+  # # for j in range(3):
+  # #   carray[j + 5].Divide(2, 2)
+  # #   for i in range(4):
+  # #     carray[j + 5].cd(i + 1).SetGrid()
+  # #     ROOT.gPad.SetRightMargin(0.15)
+  # #     # harray[i + 12].GetZaxis().SetTitle('[T]')
+  # #     harray[i + j * 4 + 12].SetStats(False)
+  # #     harray[i + j * 4 + 12].Draw('colz')
+  # #   carray[j + 5].Print(pdf_name)
+  # ROOT.gPad.Print(pdf_name + ']')
+  f = ROOT.TFile('bfield.root', 'RECREATE')
+  c1 = ROOT.TCanvas('c1', 'c1', 1600, 400);
+  c1.Divide(4, 1)
+  c1.cd(1)
+  harray['B_Y [Z%X]'].Draw('colz')
+  harray['B_Y [Z%X]'].Clone('h1').Write()
+  c1.cd(2)
+  harray['B_Y [Y%Z]'].Draw('colz')
+  harray['B_Y [Y%Z]'].Clone('h2').Write()
+  c1.cd(3)
   harray['divB'].Draw('colz')
-  carray[key].cd(2).SetGrid()
+  harray['divB'].Clone('h3').Write()
+  c1.cd(4)
   harray['(rotB)_{x}'].Draw('colz')
-  carray[key].cd(3).SetGrid()
-  harray['(rotB)_{y}'].Draw('colz')
-  carray[key].cd(4).SetGrid()
-  harray['(rotB)_{z}'].Draw('colz')
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  for i, t in enumerate(['X', 'Y', 'Z']):
-    key = f'B_Field_{t}'
-    carray[key].Divide(2, 2)
-    carray[key].cd(1).SetGrid()
-    harray[f'B_{t} [Y%X]'].Draw('colz')
-    carray[key].cd(2).SetGrid()
-    harray[f'B_{t} [Y%Z]'].Draw('colz')
-    carray[key].cd(3).SetGrid()
-    harray[f'B_{t} [Z%X]'].Draw('colz')
-    carray[key].Print(pdf_name)
-    carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  key = 'Residual'
-  carray[key].Divide(2, 2)
-  carray[key].cd(1).SetGrid()
-  harray['Res B_{x}'].Draw('colz')
-  carray[key].cd(2).SetGrid()
-  harray['Res B_{y}'].Draw('colz')
-  carray[key].cd(3).SetGrid()
-  harray['Res B_{z}'].Draw('colz')
-  # carray[key].cd(4).SetGrid()
-  # harray['Res B'].Draw('colz')
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  key = 'ResidualRatio'
-  carray[key].Divide(2, 2)
-  carray[key].cd(1).SetGrid()
-  harray['Res/Calc B_{x}'].Draw('colz')
-  carray[key].cd(2).SetGrid()
-  harray['Res/Calc B_{y}'].Draw('colz')
-  carray[key].cd(3).SetGrid()
-  harray['Res/Calc B_{z}'].Draw('colz')
-  # carray[key].cd(4).SetGrid()
-  # harray['Res. B'].Draw('colz')
-  carray[key].Print(pdf_name)
-  carray[key].Print(os.path.join(pdf_dir, key + '.pdf'))
-  # for i in range(3):
-  #   carray[15].cd(2*i + 1).SetGrid()
-  #   garray[i + 6].Draw('AL')
-  #   garray[i + 9].Draw('L')
-  #   ROOT.gPad.Modified()
-  #   ROOT.gPad.Update()
-  #   carray[15].cd(2*i + 2).SetGrid()
-  #   garray[i + 12].Draw('AL')
-  #   ROOT.gPad.Modified()
-  #   ROOT.gPad.Update()
-  # carray[15].Print(pdf_name)
-  # for j in range(2):
-  #   carray[j + 14].Divide(2, 2)
-  #   for i in range(4):
-  #     carray[j + 14].cd(i + 1).SetGrid()
-  #     harray[j if i == 3 else i + 44 + j*3].Draw('colz')
-  #     ROOT.gPad.Modified()
-  #     ROOT.gPad.Update()
-  #   carray[j + 14].Print(pdf_name)
-  # #carray[2].Divide(1, 2)
-  # carray[2].cd(0).SetGrid()
-  # # ymax = max(harray[2].GetMaximum(), harray[3].GetMaximum())
-  # # harray[2].SetMaximum(ymax * 1.05)
-  # harray[3].Draw()
-  # harray[2].Draw('same')
-  # for i in range(2):
-  #   stddev = harray[i + 2].GetStdDev()
-  #   mean = harray[i + 2].GetMean()
-  #   if mean != 0:
-  #     utility.print_info(f'ANA  ref field stddev = {stddev:.3e} ' +
-  #                        f'({abs(stddev/mean)*100:.4f}%)')
-  # # harray[3].Fit('gaus', '', '')
-  # carray[2].Print(pdf_name)
-  # carray[3].Divide(2, 2)
-  # for i in range(4):
-  #   carray[3].cd(i + 1).SetGrid()
-  #   harray[i + 4].Draw()
-  # carray[3].Print(pdf_name)
-  # carray[4].Divide(2, 2)
-  # for i in range(4):
-  #   carray[4].cd(i + 1).SetGrid()
-  #   # ROOT.gPad.SetLogy()
-  #   harray[i + 8].Draw()
-  #   # harray[i + 8].Fit('gaus')
-  #   text = ROOT.TText()
-  # carray[4].Print(pdf_name)
-  # carray[8].Divide(2, 2)
-  # for i in range(4):
-  #   carray[8].cd(i + 1).SetGrid()
-  #   harray[i + 24].Draw('colz')
-  # carray[8].Print(pdf_name)
-  # carray[9].Divide(2, 2)
-  # for i in range(4):
-  #   carray[9].cd(i + 1).SetGrid()
-  #   harray[i + 28].Draw('colz')
-  # carray[9].Print(pdf_name)
-  # for j in range(3):
-  #   carray[10 + j].Divide(2, 2)
-  #   for i in range(4):
-  #     carray[10 + j].cd(i + 1).SetGrid()
-  #     harray[i + 32 + j * 4].Draw('colz')
-  #   carray[10 + j].Print(pdf_name)
-  # for j in range(3):
-  #   carray[j + 5].Divide(2, 2)
-  #   for i in range(4):
-  #     carray[j + 5].cd(i + 1).SetGrid()
-  #     ROOT.gPad.SetRightMargin(0.15)
-  #     # harray[i + 12].GetZaxis().SetTitle('[T]')
-  #     harray[i + j * 4 + 12].SetStats(False)
-  #     harray[i + j * 4 + 12].Draw('colz')
-  #   carray[j + 5].Print(pdf_name)
-  ROOT.gPad.Print(pdf_name + ']')
+  harray['(rotB)_{x}'].Clone('h4').Write()
+  f.Write()
+  f.Close()
+  c1.Print(pdf_name)
   if not ROOT.gROOT.IsBatch():
     ROOT.TPython.Prompt()
+
+#______________________________________________________________________________
+def make_root_file():
+  import ROOT
+  ROOT.gROOT.SetBatch()
+  # ROOT.gErrorIgnoreLevel = ROOT.kFatal
+  f = ROOT.TFile('bfield.root', 'RECREATE')
+  tree = ROOT.TTree('tree', 'tree of fieldmap')
+  p = ROOT.TVector3()
+  b = ROOT.TVector3()
+  tree.Branch('p', p)
+  tree.Branch('b', b)
+  ''' cut '''
+  field_map = field_man.field_map
+  # if cut_for_nmr:
+  #   field_map = { k:v for k, v in field_map.items()
+  #                 if v.bref < -0.7125 }
+  ''' first loop '''
+  ipoint = 0
+  for key, elm in field_map.items():
+    if len(elm.data) >= 13:
+      # garray['Ref. Field'].SetPoint(ipoint, elm.unix_time, elm.bref)
+      # garray['Temp. Coil'].SetPoint(ipoint, elm.unix_time, elm.temp1)
+      # garray['Temp. Room'].SetPoint(ipoint, elm.unix_time, elm.temp2)
+      if cut_for_nmr and elm.bref > -0.71245:
+        continue
+      # harray['Ref. Field % NMR'].Fill(elm.nmr, elm.bref)
+      # harray['Ref. Field % B_{y}'].Fill(elm.b.Y(), elm.bref)
+      # harray['Ref. Field % Temp. Coil'].Fill(elm.temp1, elm.bref)
+      # harray['Ref. Field % Temp. Room'].Fill(elm.temp2, elm.bref)
+      # harray['NMR % Temp. Coil'].Fill(elm.temp1, elm.nmr)
+      # harray['NMR % Temp. Room'].Fill(elm.temp2, elm.nmr)
+      # harray['B_{x} % NMR'].Fill(elm.nmr, elm.b.X())
+      # harray['B_{y} % NMR'].Fill(elm.nmr, elm.b.Y())
+      # harray['B_{z} % NMR'].Fill(elm.nmr, elm.b.Z())
+      # harray['B_{x} % Temp. Coil'].Fill(elm.temp1, elm.b.X())
+      # harray['B_{x} % Temp. Room'].Fill(elm.temp2, elm.b.X())
+      # harray['B_{y} % Temp. Coil'].Fill(elm.temp1, elm.b.Y())
+      # harray['B_{y} % Temp. Room'].Fill(elm.temp2, elm.b.Y())
+      # harray['B_{z} % Temp. Coil'].Fill(elm.temp1, elm.b.Z())
+      # harray['B_{z} % Temp. Room'].Fill(elm.temp2, elm.b.Z())
+      ipoint += 1
+      if ipoint%100 == 0:
+        print(ipoint)
+      tree.Write()
+  f.Write()
+  f.Close()
 
 #______________________________________________________________________________
 if __name__ == '__main__':
@@ -669,7 +699,8 @@ if __name__ == '__main__':
     param_man.initialize(parsed.param_file)
     calc_map = calculation_map.CalcMap()
     field_man = fieldmap_manager.FieldMapManager()
-    analyze()
-    calc_map.draw()
+    # analyze()
+    make_root_file()
+    # calc_map.draw()
   except KeyboardInterrupt:
     pass

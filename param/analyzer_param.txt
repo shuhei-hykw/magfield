@@ -32,3 +32,6 @@ ref_device	/dev/ttyUSB1
 # NMR
 nmr_server_host		192.168.30.2
 nmr_server_port		10001
+
+# Field map
+field_map		param/magnet_w_chambers_1T.fld
